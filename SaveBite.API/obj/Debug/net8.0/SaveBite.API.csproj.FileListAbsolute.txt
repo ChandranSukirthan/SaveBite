@@ -38,3 +38,4 @@
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/SharpCompress.dll
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Snappier.dll
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/ZstdSharp.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/obj/Debug/net8.0/SaveBite.API.sourcelink.json
