@@ -1,0 +1,6 @@
+@SaveBite.API_HostAddress = http://localhost:5217
+
+GET {{SaveBite.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
