@@ -10,21 +10,35 @@ async def get_customer_profile(
     customer_id: str,
 ) -> dict:
     """
-    Get a customer's saved preferences, budget,
-    location, and profile information from SaveBite.
+    Get customer preferences and profile data
+    through the protected internal C# API.
     """
+
+    if not customer_id:
+        return {
+            "success": False,
+            "error": "Customer ID is required.",
+        }
 
     url = (
         f"{settings.csharp_api_url}"
-        f"/api/Customer/internal/{customer_id}"
+        f"/api/internal-ai/customers/{customer_id}"
     )
+
+    headers = {
+        "X-AI-Service-Key":
+            settings.ai_service_key
+    }
 
     try:
         async with httpx.AsyncClient(
             timeout=15.0
         ) as client:
 
-            response = await client.get(url)
+            response = await client.get(
+                url,
+                headers=headers,
+            )
 
         if response.status_code == 200:
             return {
@@ -44,4 +58,3 @@ async def get_customer_profile(
             "error": "C# API connection failed.",
             "details": str(exc),
         }
-

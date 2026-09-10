@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SaveBite.API.Configuration;
+using SaveBite.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +63,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseMiddleware<AIServiceAuthenticationMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -174,4 +174,38 @@ public class CustomerController : ControllerBase
             customer.CreatedAt
         });
     }
+
+    [HttpGet("/api/internal-ai/customers/{customerId}")]
+    public async Task<IActionResult> GetCustomerForAI(
+        string customerId)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return BadRequest(new
+            {
+                message = "Customer ID is required."
+            });
+        }
+
+        var customer = await _customers
+            .Find(x => x.Id == customerId)
+            .FirstOrDefaultAsync();
+
+        if (customer == null)
+        {
+            return NotFound(new
+            {
+                message = "Customer profile not found."
+            });
+        }
+
+        return Ok(new
+        {
+            customer.Id,
+            customer.UserId,
+            customer.Location,
+            customer.PreferredCategories,
+            customer.MaximumBudget
+        });
+    }
 }

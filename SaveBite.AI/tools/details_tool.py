@@ -5,13 +5,19 @@ from langchain_core.tools import tool
 from config.settings import settings
 
 
+def get_headers() -> dict:
+    return {
+        "X-AI-Service-Key":
+            settings.ai_service_key
+    }
+
+
 @tool
 async def get_food_details(
     food_id: str,
 ) -> dict:
     """
-    Get complete information about a specific
-    available surplus food item.
+    Get detailed information about one food item.
     """
 
     if not food_id:
@@ -22,7 +28,7 @@ async def get_food_details(
 
     url = (
         f"{settings.csharp_api_url}"
-        f"/api/food-discovery/{food_id}"
+        f"/api/internal-ai/food/{food_id}"
     )
 
     try:
@@ -30,7 +36,10 @@ async def get_food_details(
             timeout=15.0
         ) as client:
 
-            response = await client.get(url)
+            response = await client.get(
+                url,
+                headers=get_headers(),
+            )
 
         if response.status_code == 200:
             return {
@@ -57,8 +66,7 @@ async def get_restaurant_details(
     restaurant_id: str,
 ) -> dict:
     """
-    Get detailed information about an approved
-    restaurant.
+    Get detailed information about an approved restaurant.
     """
 
     if not restaurant_id:
@@ -69,8 +77,7 @@ async def get_restaurant_details(
 
     url = (
         f"{settings.csharp_api_url}"
-        f"/api/food-discovery/restaurant/"
-        f"{restaurant_id}"
+        f"/api/internal-ai/restaurants/{restaurant_id}"
     )
 
     try:
@@ -78,7 +85,10 @@ async def get_restaurant_details(
             timeout=15.0
         ) as client:
 
-            response = await client.get(url)
+            response = await client.get(
+                url,
+                headers=get_headers(),
+            )
 
         if response.status_code == 200:
             return {

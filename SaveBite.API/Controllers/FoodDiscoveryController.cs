@@ -321,6 +321,248 @@ public class FoodDiscoveryController : ControllerBase
         });
     }
 
+    [HttpGet("/api/internal-ai/food/{id}")]
+    public async Task<IActionResult> GetFoodForAI(
+        string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest(new
+            {
+                message = "Food item ID is required."
+            });
+        }
+
+        var food = await _foodItems
+            .Find(x => x.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (food == null)
+        {
+            return NotFound(new
+            {
+                message = "Food item not found."
+            });
+        }
+
+        var restaurant = await _restaurants
+            .Find(x =>
+                x.Id == food.RestaurantId &&
+                x.IsApproved)
+            .FirstOrDefaultAsync();
+
+        if (restaurant == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Approved restaurant not found."
+            });
+        }
+
+        return Ok(new
+        {
+            food = new
+            {
+                food.Id,
+                food.Name,
+                food.Description,
+                food.Category,
+                food.Quantity,
+                food.Price,
+                food.AvailableFrom,
+                food.AvailableUntil,
+                food.Location,
+                status = food.Status.ToString()
+            },
+
+            restaurant = new
+            {
+                restaurant.Id,
+                restaurant.RestaurantName,
+                restaurant.Address,
+                restaurant.Location
+            }
+        });
+    }
+
+    [HttpGet("/api/internal-ai/restaurants/{id}")]
+    public async Task<IActionResult> GetRestaurantForAI(
+        string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest(new
+            {
+                message = "Restaurant ID is required."
+            });
+        }
+
+        var restaurant = await _restaurants
+            .Find(x =>
+                x.Id == id &&
+                x.IsApproved)
+            .FirstOrDefaultAsync();
+
+        if (restaurant == null)
+        {
+            return NotFound(new
+            {
+                message = "Restaurant not found."
+            });
+        }
+
+        return Ok(new
+        {
+            restaurant.Id,
+            restaurant.RestaurantName,
+            restaurant.Description,
+            restaurant.Address,
+            restaurant.Location
+        });
+    }
+
+    [HttpPost("/api/internal-ai/food/search")]
+    public async Task<IActionResult> SearchFoodForAI(
+        FoodSearchRequest request)
+    {
+        if (request.Latitude < -90 ||
+            request.Latitude > 90)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid latitude."
+            });
+        }
+
+        if (request.Longitude < -180 ||
+            request.Longitude > 180)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid longitude."
+            });
+        }
+
+        if (request.RadiusInKilometers <= 0 ||
+            request.RadiusInKilometers > 50)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid search radius."
+            });
+        }
+
+        var approvedRestaurants = await _restaurants
+            .Find(x => x.IsApproved)
+            .ToListAsync();
+
+        var restaurantIds = approvedRestaurants
+            .Select(x => x.Id)
+            .ToList();
+
+        var filterBuilder =
+            Builders<FoodItem>.Filter;
+
+        var filters = new List<FilterDefinition<FoodItem>>
+        {
+            filterBuilder.In(
+                x => x.RestaurantId,
+                restaurantIds),
+
+            filterBuilder.Eq(
+                x => x.Status,
+                FoodStatus.Available),
+
+            filterBuilder.Gt(
+                x => x.Quantity,
+                0),
+
+            filterBuilder.Lte(
+                x => x.AvailableFrom,
+                DateTime.UtcNow),
+
+            filterBuilder.Gt(
+                x => x.AvailableUntil,
+                DateTime.UtcNow)
+        };
+
+        if (!string.IsNullOrWhiteSpace(
+                request.Category))
+        {
+            filters.Add(
+                filterBuilder.Regex(
+                    x => x.Category,
+                    new MongoDB.Bson
+                        .BsonRegularExpression(
+                            $"^{System.Text.RegularExpressions.Regex.Escape(request.Category.Trim())}$",
+                            "i")));
+        }
+
+        if (request.MaxPrice.HasValue)
+        {
+            filters.Add(
+                filterBuilder.Lte(
+                    x => x.Price,
+                    request.MaxPrice.Value));
+        }
+
+        var foodItems = await _foodItems
+            .Find(filterBuilder.And(filters))
+            .ToListAsync();
+
+        var results = new List<object>();
+
+        foreach (var food in foodItems)
+        {
+            var distance =
+                CalculateDistanceInKilometers(
+                    request.Latitude,
+                    request.Longitude,
+                    food.Location.Coordinates[1],
+                    food.Location.Coordinates[0]);
+
+            if (distance <=
+                request.RadiusInKilometers)
+            {
+                var restaurant =
+                    approvedRestaurants.FirstOrDefault(
+                        x => x.Id == food.RestaurantId);
+
+                if (restaurant == null)
+                    continue;
+
+                results.Add(new
+                {
+                    food.Id,
+                    food.Name,
+                    food.Description,
+                    food.Category,
+                    food.Quantity,
+                    food.Price,
+                    food.AvailableFrom,
+                    food.AvailableUntil,
+
+                    distanceInKilometers =
+                        Math.Round(distance, 2),
+
+                    restaurant = new
+                    {
+                        restaurant.Id,
+                        restaurant.RestaurantName,
+                        restaurant.Address
+                    }
+                });
+            }
+        }
+
+        return Ok(
+            results
+                .OrderBy(
+                    x => GetDistance(x))
+                .ToList());
+    }
+
     private static double GetDistance(object item)
     {
         var property = item

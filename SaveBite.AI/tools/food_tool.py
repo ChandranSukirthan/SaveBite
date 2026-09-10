@@ -14,14 +14,13 @@ async def search_nearby_food(
     max_price: float | None = None,
 ) -> dict:
     """
-    Search available surplus food through the C# API.
-
-    The AI service never accesses MongoDB directly.
+    Search currently available surplus food
+    through the C# backend.
     """
 
     url = (
         f"{settings.csharp_api_url}"
-        "/api/FoodDiscovery/search"
+        "/api/internal-ai/food/search"
     )
 
     payload = {
@@ -32,6 +31,11 @@ async def search_nearby_food(
         "maxPrice": max_price,
     }
 
+    headers = {
+        "X-AI-Service-Key":
+            settings.ai_service_key
+    }
+
     try:
         async with httpx.AsyncClient(
             timeout=15.0
@@ -40,9 +44,11 @@ async def search_nearby_food(
             response = await client.post(
                 url,
                 json=payload,
+                headers=headers,
             )
 
         if response.status_code == 200:
+
             return {
                 "success": True,
                 "data": response.json(),
@@ -55,6 +61,7 @@ async def search_nearby_food(
         }
 
     except httpx.RequestError as exc:
+
         return {
             "success": False,
             "error": "C# API connection failed.",
