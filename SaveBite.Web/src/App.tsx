@@ -19,8 +19,15 @@ import DeliveryProfileSetupPage from "./pages/profiles/DeliveryProfileSetupPage"
 
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
+import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
+import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
+import FoodListPage from "./pages/restaurant/FoodListPage";
+import AddFoodPage from "./pages/restaurant/AddFoodPage";
+import EditFoodPage from "./pages/restaurant/EditFoodPage";
+import RestaurantOrdersPage from "./pages/restaurant/RestaurantOrdersPage";
 import DeliveryDashboard from "./pages/dashboards/DeliveryDashboard";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
+
 
 function App() {
   return (
@@ -153,6 +160,90 @@ function App() {
               >
                 <ProfileGate>
                   <RestaurantDashboard />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/profile"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <RestaurantProfileView />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/notifications"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <RestaurantNotificationsPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/food"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <FoodListPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/food/new"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <AddFoodPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/food/:id/edit"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <EditFoodPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/restaurant/orders"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <ProfileGate>
+                  <RestaurantOrdersPage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }
