@@ -398,3 +398,4 @@ export function AIRecommendationsPage() {
     </CustomerLayout>
   );
 }
+

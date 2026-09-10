@@ -67,6 +67,7 @@ export function CustomerLayout({ children, onLocationUpdate }: CustomerLayoutPro
 
   const navLinks = [
     { label: "Dashboard", path: "/customer/dashboard", icon: "🏠" },
+    { label: "AI Recommendations", path: "/customer/ai-recommendations", icon: "✨" },
     { label: "Explore Food", path: "/customer/food", icon: "🍲" },
     { label: "My Orders", path: "/customer/orders", icon: "📦" },
     { label: "Preferences", path: "/customer/profile-setup", icon: "⚙️" },

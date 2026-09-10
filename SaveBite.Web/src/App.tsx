@@ -21,6 +21,8 @@ import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import { FoodDiscoveryPage } from "./pages/customer/FoodDiscoveryPage";
 import { FoodDetailsPage } from "./pages/customer/FoodDetailsPage";
 import { CustomerOrdersPage } from "./pages/customer/CustomerOrdersPage";
+import { AIRecommendationsPage } from "./pages/customer/AIRecommendationsPage";
+import { DeliveryEstimatePage } from "./pages/customer/DeliveryEstimatePage";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
 import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
 import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
@@ -303,6 +305,34 @@ function App() {
               >
                 <ProfileGate>
                   <CustomerOrdersPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/customer/orders/:orderId/estimate"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <DeliveryEstimatePage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/customer/ai-recommendations"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <AIRecommendationsPage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }

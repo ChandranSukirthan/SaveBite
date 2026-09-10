@@ -312,14 +312,21 @@ export function CustomerOrdersPage() {
 
                 {/* Order Footer Actions */}
                 <div className="co-order-footer">
-                  <div className="co-footer-left">
+                  <div className="co-footer-left" style={{ display: "flex", gap: "8px" }}>
                     <button
                       type="button"
                       className="co-btn-estimate"
                       onClick={() => handleViewEstimate(order)}
                     >
-                      ⏱️ Delivery Estimate & ETA
+                      ⏱️ Quick ETA
                     </button>
+                    <Link
+                      to={`/customer/orders/${order.id}/estimate`}
+                      className="co-btn-estimate"
+                      style={{ textDecoration: "none" }}
+                    >
+                      📊 Full Fare Breakdown ➔
+                    </Link>
                   </div>
 
                   <div className="co-footer-right">
