@@ -18,10 +18,12 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<Order> _orders;
     private readonly AIServiceClient _aiServiceClient;
+    private readonly DeliveryNotificationService _notificationService;
 
     public DeliveryPersonOrderController(
         MongoDbContext mongoDbContext,
-        AIServiceClient aiServiceClient)
+        AIServiceClient aiServiceClient,
+        DeliveryNotificationService notificationService)
     {
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
@@ -33,6 +35,7 @@ public class DeliveryPersonOrderController : ControllerBase
             .GetCollection<Order>("orders");
 
         _aiServiceClient = aiServiceClient;
+        _notificationService = notificationService;
     }
 
    
@@ -260,6 +263,18 @@ public class DeliveryPersonOrderController : ControllerBase
             });
         }
 
+        var acceptedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        if (acceptedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    acceptedDelivery);
+        }
+
         return Ok(new
         {
             message =
@@ -339,6 +354,32 @@ public class DeliveryPersonOrderController : ControllerBase
             x => x.Id == deliveryRequest.OrderId,
             orderUpdate);
 
+        var updatedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        var updatedOrder =
+            await _orders
+                .Find(x =>
+                    x.Id ==
+                    deliveryRequest.OrderId)
+                .FirstOrDefaultAsync();
+
+        if (updatedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    updatedDelivery);
+        }
+
+        if (updatedOrder != null)
+        {
+            await _notificationService
+                .NotifyOrderStatusAsync(
+                    updatedOrder);
+        }
+
         return Ok(new
         {
             message =
@@ -415,6 +456,32 @@ public class DeliveryPersonOrderController : ControllerBase
         await _orders.UpdateOneAsync(
             x => x.Id == deliveryRequest.OrderId,
             orderUpdate);
+
+        var updatedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        var updatedOrder =
+            await _orders
+                .Find(x =>
+                    x.Id ==
+                    deliveryRequest.OrderId)
+                .FirstOrDefaultAsync();
+
+        if (updatedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    updatedDelivery);
+        }
+
+        if (updatedOrder != null)
+        {
+            await _notificationService
+                .NotifyOrderStatusAsync(
+                    updatedOrder);
+        }
 
         return Ok(new
         {
@@ -507,6 +574,32 @@ public class DeliveryPersonOrderController : ControllerBase
         await _deliveryPersons.UpdateOneAsync(
             x => x.Id == deliveryPerson.Id,
             driverUpdate);
+
+        var completedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        var completedOrder =
+            await _orders
+                .Find(x =>
+                    x.Id ==
+                    deliveryRequest.OrderId)
+                .FirstOrDefaultAsync();
+
+        if (completedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    completedDelivery);
+        }
+
+        if (completedOrder != null)
+        {
+            await _notificationService
+                .NotifyOrderStatusAsync(
+                    completedOrder);
+        }
 
         return Ok(new
         {

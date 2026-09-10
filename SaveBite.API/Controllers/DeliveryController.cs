@@ -5,6 +5,7 @@ using MongoDB.Driver.GeoJsonObjectModel;
 using SaveBite.API.Configuration;
 using SaveBite.API.DTOs;
 using SaveBite.API.Models;
+using SaveBite.API.Services;
 
 namespace SaveBite.API.Controllers;
 
@@ -18,8 +19,11 @@ public class DeliveryController : ControllerBase
     private readonly IMongoCollection<Customer> _customers;
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<DeliveryPerson> _deliveryPersons;
+    private readonly DeliveryNotificationService _notificationService;
 
-    public DeliveryController(MongoDbContext mongoDbContext)
+    public DeliveryController(
+        MongoDbContext mongoDbContext,
+        DeliveryNotificationService notificationService)
     {
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
@@ -35,6 +39,8 @@ public class DeliveryController : ControllerBase
 
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
+
+        _notificationService = notificationService;
     }
 
     
@@ -610,6 +616,22 @@ public class DeliveryController : ControllerBase
             x => x.Id == deliveryRequest.OrderId,
             orderUpdate);
 
+        var assignedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        if (assignedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDriverAssignedAsync(
+                    assignedDelivery);
+
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    assignedDelivery);
+        }
+
         return Ok(new
         {
             message =
@@ -903,6 +925,22 @@ public class DeliveryController : ControllerBase
                     x => x.UpdatedAt,
                     DateTime.UtcNow)
         );
+
+        var assignedDelivery =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        if (assignedDelivery != null)
+        {
+            await _notificationService
+                .NotifyDriverAssignedAsync(
+                    assignedDelivery);
+
+            await _notificationService
+                .NotifyDeliveryStatusAsync(
+                    assignedDelivery);
+        }
 
         return Ok(new
         {

@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SaveBite.API.Configuration;
+using SaveBite.API.Hubs;
 using SaveBite.API.Middleware;
 using SaveBite.API.Services;
 
@@ -44,6 +45,10 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
 
+builder.Services.AddSignalR();
+
+builder.Services.AddScoped<DeliveryNotificationService>();
+
 builder.Services.AddHttpClient<AIServiceClient>();
 
 builder.Services.AddEndpointsApiExplorer();
@@ -73,5 +78,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<DeliveryHub>(
+    "/hubs/delivery");
 
 app.Run();
