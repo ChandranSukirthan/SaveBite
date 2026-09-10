@@ -147,3 +147,55 @@ another suitable candidate.
     return {
         "message": final_message,
     }
+
+
+@app.post("/agents/delivery/optimize")
+async def optimize_delivery(
+    delivery_request_id: str,
+):
+    request = f"""
+Optimize delivery assignment for:
+
+Delivery request:
+{delivery_request_id}
+
+Find available nearby delivery persons,
+calculate suitable delivery options,
+compare distance, estimated delivery time,
+vehicle information, and delivery cost.
+
+Select and assign the best available delivery
+person.
+
+Do not invent any driver information.
+"""
+
+    initial_state = {
+        "delivery_request_id": delivery_request_id,
+        "excluded_driver_ids": [],
+        "retry_count": 0,
+        "max_retries": 3,
+        "messages": [
+            HumanMessage(
+                content=request
+            )
+        ],
+    }
+
+    result = await delivery_graph.ainvoke(
+        initial_state
+    )
+
+    messages = result.get(
+        "messages",
+        [],
+    )
+
+    final_message = ""
+
+    if messages:
+        final_message = messages[-1].content
+
+    return {
+        "message": final_message,
+    }

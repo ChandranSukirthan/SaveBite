@@ -165,3 +165,53 @@ async def assign_delivery_person(
             "error": "C# API connection failed.",
             "details": str(exc),
         }
+
+
+@tool
+async def calculate_delivery_quote(
+    distance_in_kilometers: float,
+) -> dict:
+    """
+    Calculate a temporary SaveBite delivery quote.
+
+    This is a development pricing model. A future version
+    can replace this with real provider quotes.
+    """
+
+    if distance_in_kilometers < 0:
+        return {
+            "success": False,
+            "error": "Distance cannot be negative.",
+        }
+
+    base_fee = 100.0
+    per_kilometer = 50.0
+
+    delivery_fee = (
+        base_fee
+        + (distance_in_kilometers * per_kilometer)
+    )
+
+    estimated_minutes = max(
+        5,
+        int(
+            (distance_in_kilometers / 25.0)
+            * 60
+        ) + 3,
+    )
+
+    return {
+        "success": True,
+        "delivery_fee": round(
+            delivery_fee,
+            2,
+        ),
+        "estimated_minutes":
+            estimated_minutes,
+        "distance_in_kilometers":
+            round(
+                distance_in_kilometers,
+                2,
+            ),
+        "pricing_model": "development",
+    }
