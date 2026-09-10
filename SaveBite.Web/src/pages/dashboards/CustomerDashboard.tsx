@@ -495,7 +495,12 @@ export function CustomerDashboard() {
                 <span style={{ fontSize: "18px" }}>📦</span>
                 <h3>My Recent Orders</h3>
               </div>
-              <span className="rst-badge">{orders.length} total</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span className="rst-badge">{orders.length} total</span>
+                <Link to="/customer/orders" style={{ fontSize: "12px", fontWeight: 700, color: "var(--black)", textDecoration: "none" }}>
+                  View All ➔
+                </Link>
+              </div>
             </div>
 
             {orders.length === 0 ? (

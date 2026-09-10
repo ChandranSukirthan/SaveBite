@@ -19,6 +19,8 @@ import DeliveryProfileSetupPage from "./pages/profiles/DeliveryProfileSetupPage"
 
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import { FoodDiscoveryPage } from "./pages/customer/FoodDiscoveryPage";
+import { FoodDetailsPage } from "./pages/customer/FoodDetailsPage";
+import { CustomerOrdersPage } from "./pages/customer/CustomerOrdersPage";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
 import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
 import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
@@ -279,13 +281,36 @@ function App() {
           />
 
           <Route
-            path="/customer/explore"
-            element={<Navigate to="/customer/food" replace />}
+            path="/customer/food/:id"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <FoodDetailsPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
           />
 
           <Route
             path="/customer/orders"
-            element={<Navigate to="/customer/dashboard#orders" replace />}
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <CustomerOrdersPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/customer/explore"
+            element={<Navigate to="/customer/food" replace />}
           />
 
           <Route

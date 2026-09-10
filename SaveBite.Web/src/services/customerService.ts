@@ -56,3 +56,30 @@ export async function createCustomerOrder(
   return response.data.order;
 }
 
+export async function getCustomerOrderById(id: string): Promise<Order> {
+  const response = await api.get<Order>(`/Order/${id}`);
+  return response.data;
+}
+
+export async function cancelCustomerOrder(
+  id: string
+): Promise<{ message: string }> {
+  const response = await api.patch<{ message: string }>(`/Order/${id}/cancel`);
+  return response.data;
+}
+
+export async function getCustomerDeliveryEstimate(
+  orderId: string
+): Promise<{
+  orderId: string;
+  distanceInKilometers: number;
+  estimatedDeliveryFee: number;
+  foodTotal: number;
+  estimatedTotalAmount: number;
+  estimatedMinutes: number;
+  generatedAt: string;
+}> {
+  const response = await api.get(`/customer/delivery-estimate/${orderId}`);
+  return response.data;
+}
+

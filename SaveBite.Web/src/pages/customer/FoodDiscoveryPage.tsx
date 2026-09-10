@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { CustomerLayout } from "../../components/layout/CustomerLayout";
 import { getCustomerProfile } from "../../services/profileService";
 import { searchNearbyFood } from "../../services/customerService";
@@ -380,7 +381,9 @@ export function FoodDiscoveryPage() {
                         </div>
 
                         {/* Title & Description */}
-                        <h3 className="fd-card-title">{food.name}</h3>
+                        <Link to={`/customer/food/${food.id}`} className="fd-card-title-link">
+                          <h3 className="fd-card-title">{food.name}</h3>
+                        </Link>
                         <p className="fd-card-desc">{food.description}</p>
 
                         {/* Restaurant Info (Clickable) */}
@@ -418,13 +421,21 @@ export function FoodDiscoveryPage() {
                               {food.quantity} left
                             </span>
                           </div>
-                          <button
-                            type="button"
-                            className="fd-reserve-cta"
-                            onClick={() => setReserveItem(food)}
-                          >
-                            Reserve Meal ➔
-                          </button>
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <Link
+                              to={`/customer/food/${food.id}`}
+                              className="fd-details-btn"
+                            >
+                              Details
+                            </Link>
+                            <button
+                              type="button"
+                              className="fd-reserve-cta"
+                              onClick={() => setReserveItem(food)}
+                            >
+                              Reserve ➔
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
