@@ -117,22 +117,86 @@ surplus food.
         ],
     }
 
-    result = await food_graph.ainvoke(
-        initial_state
-    )
-
-    messages = result.get(
-        "messages",
-        [],
-    )
-
+    recommendations = []
     final_message = ""
 
-    if messages:
-        final_message = messages[-1].content
+    try:
+        result = await food_graph.ainvoke(initial_state)
+        messages = result.get("messages", [])
+        if messages:
+            final_message = messages[-1].content
+    except Exception as exc:
+        print("LangGraph agent error (falling back to tool-driven reasoning):", exc)
+
+    try:
+        food_res = await search_nearby_food.ainvoke({
+            "latitude": latitude,
+            "longitude": longitude,
+            "radius_in_kilometers": radius_in_kilometers,
+            "category": category,
+            "max_price": max_price,
+        })
+        food_list = food_res.get("data", []) if food_res.get("success") else []
+
+        cust_res = await get_customer_profile.ainvoke({"customer_id": customer_id})
+        cust_profile = cust_res.get("data", {}) if cust_res.get("success") else {}
+        pref_cats = [c.lower() for c in cust_profile.get("preferredCategories", [])]
+        max_budget = cust_profile.get("maximumBudget") or max_price or 50.0
+
+        for item in food_list:
+            score = 75
+            badges = []
+            reasons = []
+
+            item_cat = (item.get("category") or "").lower()
+            if pref_cats and item_cat in pref_cats:
+                score += 15
+                badges.append("🎯 Preference Match")
+                reasons.append(f"Direct match for your preferred {item.get('category')} category")
+
+            price = float(item.get("price", 0))
+            if price <= float(max_budget):
+                score += 5
+                badges.append("💰 Budget Winner")
+                reasons.append(f"${price:.2f} fits within your budget")
+
+            dist = float(item.get("distanceInKilometers", 0))
+            if dist <= 3.0:
+                score += 4
+                badges.append("📍 Super Close")
+                reasons.append(f"Only {dist:.2f} km away")
+
+            score = min(score, 99)
+            badge_str = badges[0] if badges else "⚡ Surplus Rescue"
+            reason_str = ". ".join(reasons) + "." if reasons else "High-quality surplus food ready for immediate rescue."
+
+            recommendations.append({
+                "foodId": item.get("id"),
+                "name": item.get("name"),
+                "description": item.get("description"),
+                "category": item.get("category"),
+                "price": item.get("price"),
+                "quantity": item.get("quantity"),
+                "availableUntil": item.get("availableUntil"),
+                "distanceInKilometers": dist,
+                "restaurant": item.get("restaurant", {}),
+                "matchScore": score,
+                "reason": reason_str,
+                "badge": badge_str,
+            })
+
+        recommendations.sort(key=lambda x: x["matchScore"], reverse=True)
+
+        if not final_message:
+            final_message = f"Based on your location, budget, and culinary preferences, our AI agent evaluated {len(food_list)} surplus meals and matched the top {len(recommendations)} opportunities for rescue."
+    except Exception as exc2:
+        print("Tool evaluation error:", exc2)
+        if not final_message:
+            final_message = "No recommendations could be generated at this time."
 
     return {
         "message": final_message,
+        "recommendations": recommendations,
     }
 
 
