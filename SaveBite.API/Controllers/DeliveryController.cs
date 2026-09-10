@@ -19,11 +19,13 @@ public class DeliveryController : ControllerBase
     private readonly IMongoCollection<Customer> _customers;
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<DeliveryPerson> _deliveryPersons;
-    private readonly DeliveryNotificationService _notificationService;
+    private readonly DeliveryNotificationService _deliveryNotificationService;
+    private readonly NotificationService _notificationService;
 
     public DeliveryController(
         MongoDbContext mongoDbContext,
-        DeliveryNotificationService notificationService)
+        DeliveryNotificationService deliveryNotificationService,
+        NotificationService notificationService)
     {
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
@@ -40,6 +42,7 @@ public class DeliveryController : ControllerBase
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
 
+        _deliveryNotificationService = deliveryNotificationService;
         _notificationService = notificationService;
     }
 
@@ -623,13 +626,31 @@ public class DeliveryController : ControllerBase
 
         if (assignedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDriverAssignedAsync(
                     assignedDelivery);
 
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     assignedDelivery);
+
+            var customer =
+                await _customers
+                    .Find(x =>
+                        x.Id ==
+                        assignedDelivery.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null)
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Driver Assigned",
+                    "A delivery person has been assigned to your order.",
+                    NotificationType.DriverAssigned,
+                    assignedDelivery.OrderId,
+                    assignedDelivery.Id);
+            }
         }
 
         return Ok(new
@@ -933,13 +954,31 @@ public class DeliveryController : ControllerBase
 
         if (assignedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDriverAssignedAsync(
                     assignedDelivery);
 
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     assignedDelivery);
+
+            var customer =
+                await _customers
+                    .Find(x =>
+                        x.Id ==
+                        assignedDelivery.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null)
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Driver Assigned",
+                    "A delivery person has been assigned to your order.",
+                    NotificationType.DriverAssigned,
+                    assignedDelivery.OrderId,
+                    assignedDelivery.Id);
+            }
         }
 
         return Ok(new

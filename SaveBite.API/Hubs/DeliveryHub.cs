@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -31,5 +32,38 @@ public class DeliveryHub : Hub
         await Groups.RemoveFromGroupAsync(
             Context.ConnectionId,
             $"delivery-{orderId}");
+    }
+
+    public async Task JoinUserNotificationGroup()
+    {
+        var userId =
+            Context.User?.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            throw new HubException(
+                "User identity could not be determined.");
+        }
+
+        await Groups.AddToGroupAsync(
+            Context.ConnectionId,
+            $"user-{userId}");
+    }
+
+    public async Task LeaveUserNotificationGroup()
+    {
+        var userId =
+            Context.User?.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return;
+        }
+
+        await Groups.RemoveFromGroupAsync(
+            Context.ConnectionId,
+            $"user-{userId}");
     }
 }

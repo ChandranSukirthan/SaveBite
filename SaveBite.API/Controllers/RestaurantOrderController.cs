@@ -17,10 +17,12 @@ public class RestaurantOrderController : ControllerBase
     private readonly IMongoCollection<Restaurant> _restaurants;
     private readonly IMongoCollection<Order> _orders;
     private readonly AIServiceClient _aiServiceClient;
+    private readonly NotificationService _notificationService;
 
     public RestaurantOrderController(
         MongoDbContext mongoDbContext,
-        AIServiceClient aiServiceClient)
+        AIServiceClient aiServiceClient,
+        NotificationService notificationService)
     {
         _restaurants = mongoDbContext.Database
             .GetCollection<Restaurant>("restaurants");
@@ -29,6 +31,7 @@ public class RestaurantOrderController : ControllerBase
             .GetCollection<Order>("orders");
 
         _aiServiceClient = aiServiceClient;
+        _notificationService = notificationService;
     }
 
     [HttpGet]
@@ -169,6 +172,28 @@ public class RestaurantOrderController : ControllerBase
                 x.RestaurantId == restaurant.Id,
             update);
 
+        if (request.Status ==
+            OrderStatus.Confirmed)
+        {
+            var customer =
+                await _orders.Database
+                    .GetCollection<Customer>(
+                        "customers")
+                    .Find(x =>
+                        x.Id == order.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null)
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Order Confirmed",
+                    "Your SaveBite order has been confirmed.",
+                    NotificationType.OrderConfirmed,
+                    order.Id);
+            }
+        }
+
         /*
          * When the restaurant marks the order as
          * ReadyForPickup, automatically start the
@@ -177,6 +202,24 @@ public class RestaurantOrderController : ControllerBase
         if (request.Status ==
             OrderStatus.ReadyForPickup)
         {
+            var customer =
+                await _orders.Database
+                    .GetCollection<Customer>(
+                        "customers")
+                    .Find(x =>
+                        x.Id == order.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null)
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Food Ready",
+                    "Your food is ready for pickup.",
+                    NotificationType.FoodReady,
+                    order.Id);
+            }
+
             try
             {
                 /*

@@ -18,12 +18,14 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<Order> _orders;
     private readonly AIServiceClient _aiServiceClient;
-    private readonly DeliveryNotificationService _notificationService;
+    private readonly DeliveryNotificationService _deliveryNotificationService;
+    private readonly NotificationService _notificationService;
 
     public DeliveryPersonOrderController(
         MongoDbContext mongoDbContext,
         AIServiceClient aiServiceClient,
-        DeliveryNotificationService notificationService)
+        DeliveryNotificationService deliveryNotificationService,
+        NotificationService notificationService)
     {
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
@@ -35,6 +37,7 @@ public class DeliveryPersonOrderController : ControllerBase
             .GetCollection<Order>("orders");
 
         _aiServiceClient = aiServiceClient;
+        _deliveryNotificationService = deliveryNotificationService;
         _notificationService = notificationService;
     }
 
@@ -270,9 +273,38 @@ public class DeliveryPersonOrderController : ControllerBase
 
         if (acceptedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     acceptedDelivery);
+
+            var order =
+                await _orders
+                    .Find(x =>
+                        x.Id ==
+                        acceptedDelivery.OrderId)
+                    .FirstOrDefaultAsync();
+
+            if (order != null)
+            {
+                var customer =
+                    await _orders.Database
+                        .GetCollection<Customer>(
+                            "customers")
+                        .Find(x =>
+                            x.Id == order.CustomerId)
+                        .FirstOrDefaultAsync();
+
+                if (customer != null)
+                {
+                    await _notificationService.CreateAsync(
+                        customer.UserId,
+                        "Driver Accepted",
+                        "Your delivery person has accepted the delivery.",
+                        NotificationType.DriverAccepted,
+                        order.Id,
+                        acceptedDelivery.Id);
+                }
+            }
         }
 
         return Ok(new
@@ -368,14 +400,14 @@ public class DeliveryPersonOrderController : ControllerBase
 
         if (updatedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     updatedDelivery);
         }
 
         if (updatedOrder != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyOrderStatusAsync(
                     updatedOrder);
         }
@@ -471,16 +503,36 @@ public class DeliveryPersonOrderController : ControllerBase
 
         if (updatedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     updatedDelivery);
         }
 
         if (updatedOrder != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyOrderStatusAsync(
                     updatedOrder);
+
+            var customer =
+                await _orders.Database
+                    .GetCollection<Customer>(
+                        "customers")
+                    .Find(x =>
+                        x.Id ==
+                        updatedOrder.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null)
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Delivery Started",
+                    "Your order is now on the way.",
+                    NotificationType.DeliveryStarted,
+                    updatedOrder.Id,
+                    updatedDelivery?.Id);
+            }
         }
 
         return Ok(new
@@ -589,14 +641,14 @@ public class DeliveryPersonOrderController : ControllerBase
 
         if (completedDelivery != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     completedDelivery);
         }
 
         if (completedOrder != null)
         {
-            await _notificationService
+            await _deliveryNotificationService
                 .NotifyOrderStatusAsync(
                     completedOrder);
         }

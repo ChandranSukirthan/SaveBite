@@ -48,6 +48,7 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
 builder.Services.AddScoped<DeliveryNotificationService>();
+builder.Services.AddScoped<NotificationService>();
 
 builder.Services.AddHttpClient<AIServiceClient>();
 

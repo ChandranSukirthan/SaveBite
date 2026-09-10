@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using SaveBite.API.Configuration;
 using SaveBite.API.DTOs;
 using SaveBite.API.Models;
+using SaveBite.API.Services;
 
 namespace SaveBite.API.Controllers;
 
@@ -17,8 +18,11 @@ public class OrderController : ControllerBase
     private readonly IMongoCollection<FoodItem> _foodItems;
     private readonly IMongoCollection<Customer> _customers;
     private readonly IMongoCollection<Restaurant> _restaurants;
+    private readonly NotificationService _notificationService;
 
-    public OrderController(MongoDbContext mongoDbContext)
+    public OrderController(
+        MongoDbContext mongoDbContext,
+        NotificationService notificationService)
     {
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
@@ -31,6 +35,8 @@ public class OrderController : ControllerBase
 
         _restaurants = mongoDbContext.Database
             .GetCollection<Restaurant>("restaurants");
+
+        _notificationService = notificationService;
     }
 
     [HttpPost]
@@ -244,6 +250,21 @@ public class OrderController : ControllerBase
         };
 
         await _orders.InsertOneAsync(order);
+
+        var restaurantOwner =
+            await _restaurants
+                .Find(x => x.Id == order.RestaurantId)
+                .FirstOrDefaultAsync();
+
+        if (restaurantOwner != null)
+        {
+            await _notificationService.CreateAsync(
+                restaurantOwner.OwnerId,
+                "New Order",
+                "A customer has placed a new surplus food order.",
+                NotificationType.OrderCreated,
+                order.Id);
+        }
 
         return CreatedAtAction(
             nameof(GetOrderById),
@@ -605,6 +626,21 @@ public class OrderController : ControllerBase
         };
 
         await _orders.InsertOneAsync(order);
+
+        var restaurantOwner =
+            await _restaurants
+                .Find(x => x.Id == order.RestaurantId)
+                .FirstOrDefaultAsync();
+
+        if (restaurantOwner != null)
+        {
+            await _notificationService.CreateAsync(
+                restaurantOwner.OwnerId,
+                "New Order",
+                "A customer has placed a new surplus food order.",
+                NotificationType.OrderCreated,
+                order.Id);
+        }
 
         return CreatedAtAction(
             nameof(GetOrderById),
