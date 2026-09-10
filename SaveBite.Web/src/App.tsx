@@ -7,10 +7,15 @@ import {
 
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProtectedRoute } from "./components/auth/RoleProtectedRoute";
+import { ProfileGate } from "./components/auth/ProfileGate";
 
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+
+import CustomerProfileSetupPage from "./pages/profiles/CustomerProfileSetupPage";
+import RestaurantProfileSetupPage from "./pages/profiles/RestaurantProfileSetupPage";
+import DeliveryProfileSetupPage from "./pages/profiles/DeliveryProfileSetupPage";
 
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
@@ -101,7 +106,44 @@ function App() {
             }
           />
 
-          {/* Role-Protected Dashboards */}
+          {/* Role Profile Setup Routes */}
+          <Route
+            path="/restaurant/profile-setup"
+            element={
+              <RoleProtectedRoute
+                allowedRole="RestaurantOwner"
+                fallbackLogin="/restaurant/login"
+              >
+                <RestaurantProfileSetupPage />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/customer/profile-setup"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <CustomerProfileSetupPage />
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/delivery/profile-setup"
+            element={
+              <RoleProtectedRoute
+                allowedRole="DeliveryPerson"
+                fallbackLogin="/delivery/login"
+              >
+                <DeliveryProfileSetupPage />
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* Role-Protected Dashboards (Guarded by ProfileGate) */}
           <Route
             path="/restaurant/dashboard"
             element={
@@ -109,7 +151,9 @@ function App() {
                 allowedRole="RestaurantOwner"
                 fallbackLogin="/restaurant/login"
               >
-                <RestaurantDashboard />
+                <ProfileGate>
+                  <RestaurantDashboard />
+                </ProfileGate>
               </RoleProtectedRoute>
             }
           />
@@ -121,7 +165,9 @@ function App() {
                 allowedRole="Customer"
                 fallbackLogin="/customer/login"
               >
-                <CustomerDashboard />
+                <ProfileGate>
+                  <CustomerDashboard />
+                </ProfileGate>
               </RoleProtectedRoute>
             }
           />
@@ -133,7 +179,9 @@ function App() {
                 allowedRole="DeliveryPerson"
                 fallbackLogin="/delivery/login"
               >
-                <DeliveryDashboard />
+                <ProfileGate>
+                  <DeliveryDashboard />
+                </ProfileGate>
               </RoleProtectedRoute>
             }
           />
