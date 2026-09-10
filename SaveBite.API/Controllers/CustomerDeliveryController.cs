@@ -217,16 +217,16 @@ public class CustomerDeliveryController : ControllerBase
                                         deliveryPerson.Id,
 
                                     phoneNumber =
-                                        deliveryPerson
-                                            .PhoneNumber,
+                                        deliveryPerson.PhoneNumber,
 
                                     vehicleType =
-                                        deliveryPerson
-                                            .VehicleType,
+                                        deliveryPerson.VehicleType,
 
                                     vehicleNumber =
-                                        deliveryPerson
-                                            .VehicleNumber
+                                        deliveryPerson.VehicleNumber,
+
+                                    location =
+                                        deliveryPerson.Location
                                 }
                     }
         });

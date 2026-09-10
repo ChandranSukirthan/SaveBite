@@ -85,4 +85,29 @@ public class DeliveryNotificationService
                         delivery.Status.ToString()
                 });
     }
+
+    public async Task NotifyDriverLocationAsync(
+        string orderId,
+        string deliveryPersonId,
+        double latitude,
+        double longitude)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "DriverLocationUpdated",
+                new
+                {
+                    orderId,
+
+                    deliveryPersonId,
+
+                    latitude,
+
+                    longitude,
+
+                    updatedAt =
+                        DateTime.UtcNow
+                });
+    }
 }
