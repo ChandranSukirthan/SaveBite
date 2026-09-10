@@ -15,9 +15,8 @@ public class AIServiceClient
         _configuration = configuration;
     }
 
-    public async Task TriggerDeliveryRetryAsync(
-        string deliveryRequestId,
-        string rejectedDriverId)
+    public async Task TriggerDeliveryOptimizationAsync(
+        string deliveryRequestId)
     {
         var baseUrl =
             _configuration["AIService:BaseUrl"];
@@ -25,17 +24,24 @@ public class AIServiceClient
         var serviceKey =
             _configuration["AIService:ServiceKey"];
 
-        if (string.IsNullOrWhiteSpace(baseUrl) ||
-            string.IsNullOrWhiteSpace(serviceKey))
+        if (string.IsNullOrWhiteSpace(baseUrl))
         {
             throw new InvalidOperationException(
-                "AI service configuration is missing.");
+                "AI service BaseUrl is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(serviceKey))
+        {
+            throw new InvalidOperationException(
+                "AI service ServiceKey is not configured.");
         }
 
         var url =
-            $"{baseUrl}/agents/delivery/retry" +
-            $"?delivery_request_id={Uri.EscapeDataString(deliveryRequestId)}" +
-            $"&rejected_driver_id={Uri.EscapeDataString(rejectedDriverId)}";
+            $"{baseUrl.TrimEnd('/')}" +
+            "/agents/delivery/optimize" +
+            "?delivery_request_id=" +
+            Uri.EscapeDataString(
+                deliveryRequestId);
 
         using var request =
             new HttpRequestMessage(
@@ -49,6 +55,71 @@ public class AIServiceClient
         var response =
             await _httpClient.SendAsync(request);
 
-        response.EnsureSuccessStatusCode();
+        var responseBody =
+            await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"AI delivery optimization failed. " +
+                $"Status: {(int)response.StatusCode}. " +
+                $"Response: {responseBody}");
+        }
+    }
+
+    public async Task TriggerDeliveryRetryAsync(
+        string deliveryRequestId,
+        string rejectedDriverId)
+    {
+        var baseUrl =
+            _configuration["AIService:BaseUrl"];
+
+        var serviceKey =
+            _configuration["AIService:ServiceKey"];
+
+        if (string.IsNullOrWhiteSpace(baseUrl))
+        {
+            throw new InvalidOperationException(
+                "AI service BaseUrl is not configured.");
+        }
+
+        if (string.IsNullOrWhiteSpace(serviceKey))
+        {
+            throw new InvalidOperationException(
+                "AI service ServiceKey is not configured.");
+        }
+
+        var url =
+            $"{baseUrl.TrimEnd('/')}" +
+            "/agents/delivery/retry" +
+            "?delivery_request_id=" +
+            Uri.EscapeDataString(
+                deliveryRequestId) +
+            "&rejected_driver_id=" +
+            Uri.EscapeDataString(
+                rejectedDriverId);
+
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                url);
+
+        request.Headers.Add(
+            "X-AI-Service-Key",
+            serviceKey);
+
+        var response =
+            await _httpClient.SendAsync(request);
+
+        var responseBody =
+            await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(
+                $"AI delivery retry failed. " +
+                $"Status: {(int)response.StatusCode}. " +
+                $"Response: {responseBody}");
+        }
     }
 }

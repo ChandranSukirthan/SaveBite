@@ -399,4 +399,233 @@ public class OrderController : ControllerBase
             message = "Order cancelled successfully."
         });
     }
+
+    [AllowAnonymous]
+    [HttpPost("/api/internal-ai/orders")]
+    public async Task<IActionResult> CreateOrderForAI(
+        [FromQuery] string customerId,
+        CreateOrderRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return BadRequest(new
+            {
+                message = "Customer ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.FoodItemId))
+        {
+            return BadRequest(new
+            {
+                message = "Food item ID is required."
+            });
+        }
+
+        if (request.Quantity <= 0)
+        {
+            return BadRequest(new
+            {
+                message = "Quantity must be greater than zero."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(
+                request.DeliveryAddress))
+        {
+            return BadRequest(new
+            {
+                message = "Delivery address is required."
+            });
+        }
+
+        if (request.Latitude < -90 ||
+            request.Latitude > 90)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid latitude."
+            });
+        }
+
+        if (request.Longitude < -180 ||
+            request.Longitude > 180)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid longitude."
+            });
+        }
+
+        var customer = await _customers
+            .Find(x => x.Id == customerId)
+            .FirstOrDefaultAsync();
+
+        if (customer == null)
+        {
+            return NotFound(new
+            {
+                message = "Customer not found."
+            });
+        }
+
+        var food = await _foodItems
+            .Find(x => x.Id == request.FoodItemId)
+            .FirstOrDefaultAsync();
+
+        if (food == null)
+        {
+            return NotFound(new
+            {
+                message = "Food item not found."
+            });
+        }
+
+        if (food.Status != FoodStatus.Available)
+        {
+            return BadRequest(new
+            {
+                message = "Food item is no longer available."
+            });
+        }
+
+        if (food.AvailableUntil <= DateTime.UtcNow)
+        {
+            return BadRequest(new
+            {
+                message = "Food item has expired."
+            });
+        }
+
+        if (food.Quantity < request.Quantity)
+        {
+            return Conflict(new
+            {
+                message =
+                    $"Only {food.Quantity} item(s) are currently available."
+            });
+        }
+
+        var restaurant = await _restaurants
+            .Find(x =>
+                x.Id == food.RestaurantId &&
+                x.IsApproved)
+            .FirstOrDefaultAsync();
+
+        if (restaurant == null)
+        {
+            return BadRequest(new
+            {
+                message =
+                    "The restaurant is not currently available."
+            });
+        }
+
+        var quantityFilter =
+            Builders<FoodItem>.Filter.And(
+                Builders<FoodItem>.Filter.Eq(
+                    x => x.Id,
+                    food.Id),
+
+                Builders<FoodItem>.Filter.Eq(
+                    x => x.Status,
+                    FoodStatus.Available),
+
+                Builders<FoodItem>.Filter.Gte(
+                    x => x.Quantity,
+                    request.Quantity),
+
+                Builders<FoodItem>.Filter.Gt(
+                    x => x.AvailableUntil,
+                    DateTime.UtcNow)
+            );
+
+        var quantityUpdate =
+            Builders<FoodItem>.Update
+                .Inc(
+                    x => x.Quantity,
+                    -request.Quantity)
+                .Set(
+                    x => x.UpdatedAt,
+                    DateTime.UtcNow);
+
+        var quantityResult =
+            await _foodItems.UpdateOneAsync(
+                quantityFilter,
+                quantityUpdate);
+
+        if (quantityResult.ModifiedCount == 0)
+        {
+            return Conflict(new
+            {
+                message =
+                    "The requested food quantity is no longer available."
+            });
+        }
+
+        var foodTotal =
+            food.Price * request.Quantity;
+
+        var order = new Order
+        {
+            CustomerId = customer.Id,
+
+            RestaurantId = food.RestaurantId,
+
+            FoodItemId = food.Id,
+
+            Quantity = request.Quantity,
+
+            UnitPrice = food.Price,
+
+            FoodTotal = foodTotal,
+
+            DeliveryFee = 0m,
+
+            TotalAmount = foodTotal,
+
+            DeliveryAddress =
+                request.DeliveryAddress.Trim(),
+
+            DeliveryLocation = new Location
+            {
+                Type = "Point",
+                Coordinates = new[]
+                {
+                    request.Longitude,
+                    request.Latitude
+                }
+            },
+
+            Status = OrderStatus.Pending,
+
+            CreatedAt = DateTime.UtcNow,
+
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        await _orders.InsertOneAsync(order);
+
+        return CreatedAtAction(
+            nameof(GetOrderById),
+            new { id = order.Id },
+            new
+            {
+                message = "Order created successfully.",
+
+                order = new
+                {
+                    order.Id,
+                    order.CustomerId,
+                    order.RestaurantId,
+                    order.FoodItemId,
+                    order.Quantity,
+                    order.UnitPrice,
+                    order.FoodTotal,
+                    order.DeliveryFee,
+                    order.TotalAmount,
+                    status = order.Status.ToString()
+                }
+            });
+    }
 }
