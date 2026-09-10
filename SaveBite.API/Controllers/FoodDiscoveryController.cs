@@ -182,6 +182,145 @@ public class FoodDiscoveryController : ControllerBase
         return Ok(sortedResults);
     }
 
+    // ============================================================
+    // GET FOOD DETAILS
+    // GET: /api/food-discovery/{id}
+    // Customer
+    // ============================================================
+
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetFoodDetails(
+        string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest(new
+            {
+                message = "Food item ID is required."
+            });
+        }
+
+        var food = await _foodItems
+            .Find(x => x.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (food == null)
+        {
+            return NotFound(new
+            {
+                message = "Food item not found."
+            });
+        }
+
+        if (food.Status != FoodStatus.Available)
+        {
+            return NotFound(new
+            {
+                message = "Food item is no longer available."
+            });
+        }
+
+        if (food.Quantity <= 0)
+        {
+            return NotFound(new
+            {
+                message = "Food item is out of stock."
+            });
+        }
+
+        if (food.AvailableUntil <= DateTime.UtcNow)
+        {
+            return NotFound(new
+            {
+                message = "Food item has expired."
+            });
+        }
+
+        var restaurant = await _restaurants
+            .Find(x =>
+                x.Id == food.RestaurantId &&
+                x.IsApproved)
+            .FirstOrDefaultAsync();
+
+        if (restaurant == null)
+        {
+            return NotFound(new
+            {
+                message = "Restaurant is not currently available."
+            });
+        }
+
+        return Ok(new
+        {
+            food = new
+            {
+                food.Id,
+                food.Name,
+                food.Description,
+                food.Category,
+                food.Quantity,
+                food.Price,
+                food.AvailableFrom,
+                food.AvailableUntil,
+                food.Location
+            },
+
+            restaurant = new
+            {
+                restaurant.Id,
+                restaurant.RestaurantName,
+                restaurant.Description,
+                restaurant.Address,
+                restaurant.PhoneNumber,
+                restaurant.Location
+            }
+        });
+    }
+
+    // ============================================================
+    // GET RESTAURANT DETAILS
+    // GET: /api/food-discovery/restaurant/{id}
+    // Customer
+    // ============================================================
+
+    [HttpGet("restaurant/{id}")]
+    public async Task<IActionResult> GetRestaurantDetails(
+        string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest(new
+            {
+                message = "Restaurant ID is required."
+            });
+        }
+
+        var restaurant = await _restaurants
+            .Find(x =>
+                x.Id == id &&
+                x.IsApproved)
+            .FirstOrDefaultAsync();
+
+        if (restaurant == null)
+        {
+            return NotFound(new
+            {
+                message = "Restaurant not found."
+            });
+        }
+
+        return Ok(new
+        {
+            restaurant.Id,
+            restaurant.RestaurantName,
+            restaurant.Description,
+            restaurant.Address,
+            restaurant.PhoneNumber,
+            restaurant.Location,
+            restaurant.IsApproved
+        });
+    }
+
     private static double GetDistance(object item)
     {
         var property = item

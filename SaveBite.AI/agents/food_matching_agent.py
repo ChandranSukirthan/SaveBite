@@ -1,7 +1,4 @@
-from langchain_core.messages import (
-    HumanMessage,
-    SystemMessage,
-)
+from langchain_core.messages import SystemMessage
 
 from langgraph.graph import (
     END,
@@ -15,62 +12,81 @@ from models.food_state import FoodAgentState
 
 from services.llm_service import get_llm
 
-from tools.customer_tool import get_customer_profile
+from tools.customer_tool import (
+    get_customer_profile,
+)
 
-from tools.food_tool import search_nearby_food
+from tools.food_tool import (
+    search_nearby_food,
+)
+
+from tools.details_tool import (
+    get_food_details,
+    get_restaurant_details,
+)
 
 
 SYSTEM_PROMPT = """
 You are the SaveBite Food Matching Agent.
 
-Your objective is to help customers find suitable
+Your goal is to help customers discover suitable
 surplus food while helping restaurants reduce food waste.
 
 Available tools:
 
 1. get_customer_profile
-   Use this to retrieve the customer's saved
-   preferences, budget, and location.
+   Get the customer's saved preferences,
+   maximum budget, and location.
 
 2. search_nearby_food
-   Use this to retrieve currently available
-   surplus food near a location.
+   Search currently available surplus food
+   near a location.
 
-Your workflow should be:
+3. get_food_details
+   Get complete information about one food item.
+
+4. get_restaurant_details
+   Get detailed information about one restaurant.
+
+You should use tools when current application
+information is needed.
+
+Recommended workflow:
 
 1. Understand the customer's request.
-2. Retrieve the customer's profile when a
-   customer ID is available.
-3. Determine the customer's preferences,
-   budget, and location.
-4. Search for nearby available surplus food.
-5. Compare the available options.
-6. Recommend the most suitable food.
+2. Retrieve customer profile when possible.
+3. Search nearby food.
+4. Identify promising candidates.
+5. Inspect food details when necessary.
+6. Inspect restaurant details when useful.
+7. Compare candidates.
+8. Recommend the best options.
 
 Consider:
 
-- Food category preference
+- Customer food preference
 - Maximum budget
 - Distance
-- Quantity
-- Availability
-- Remaining availability time
-- Food waste reduction
+- Quantity available
+- Availability time
+- Food freshness/urgency based on availability deadline
+- Restaurant information
+- Overall suitability
 
-Rules:
+Important rules:
 
 - Never invent food.
-- Never invent a restaurant.
-- Only recommend food returned by tools.
+- Never invent restaurants.
+- Only use information returned by tools.
 - Never recommend food above the customer's
   maximum budget when a budget is available.
-- Prefer closer options when other factors
-  are similar.
-- Prefer food that is approaching its
-  availability deadline when appropriate.
-- Do not expose internal IDs unnecessarily.
-- Explain briefly why each recommended item
-  is suitable.
+- Prefer closer food when other factors are similar.
+- Consider food approaching its availability
+  deadline because reducing food waste is a core
+  SaveBite objective.
+- Do not expose internal database information
+  unnecessarily.
+- Give a concise explanation for recommendations.
 """
 
 
@@ -81,6 +97,8 @@ def create_agent_llm():
     tools = [
         get_customer_profile,
         search_nearby_food,
+        get_food_details,
+        get_restaurant_details,
     ]
 
     return llm.bind_tools(tools)
@@ -105,6 +123,21 @@ async def agent_node(
             )
         ]
 
+    else:
+
+        # Ensure system instructions are always
+        # available to the agent.
+        if not isinstance(
+            messages[0],
+            SystemMessage,
+        ):
+            messages = [
+                SystemMessage(
+                    content=SYSTEM_PROMPT
+                ),
+                *messages,
+            ]
+
     response = await llm.ainvoke(
         messages
     )
@@ -117,6 +150,8 @@ async def agent_node(
 tools = [
     get_customer_profile,
     search_nearby_food,
+    get_food_details,
+    get_restaurant_details,
 ]
 
 tool_node = ToolNode(tools)

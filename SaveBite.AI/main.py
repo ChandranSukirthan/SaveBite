@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+
 from langchain_core.messages import HumanMessage
 
 from agents.food_matching_agent import (
@@ -18,6 +19,7 @@ food_graph = build_food_matching_graph()
 
 @app.get("/health")
 async def health():
+
     return {
         "status": "ok",
         "service": "SaveBite AI Service",
@@ -33,38 +35,53 @@ async def recommend_food(
     category: str | None = None,
     max_price: float | None = None,
 ):
-    customer_request = f"""
-Find suitable surplus food for customer {customer_id}.
 
-Customer location:
+    customer_request = f"""
+Find the best surplus food options for customer
+ID: {customer_id}
+
+Customer's current location:
+
 latitude = {latitude}
 longitude = {longitude}
 
 Search radius:
+
 {radius_in_kilometers} km
 
-Requested category:
+Requested food category:
+
 {category if category else "Any"}
 
-Maximum budget:
+Maximum price:
+
 {
     f"Rs. {max_price}"
     if max_price is not None
-    else "Use customer profile if available"
+    else "Use the customer's saved profile if available"
 }
 
-Use the available tools to retrieve the customer's
-profile and nearby food, then recommend suitable
-options.
+Use your available tools to retrieve current
+customer and food information.
+
+Then recommend the most suitable available
+surplus food.
 """
 
     initial_state = {
         "customer_id": customer_id,
+
         "latitude": latitude,
+
         "longitude": longitude,
-        "radius_in_kilometers": radius_in_kilometers,
+
+        "radius_in_kilometers":
+            radius_in_kilometers,
+
         "category": category,
+
         "max_price": max_price,
+
         "messages": [
             HumanMessage(
                 content=customer_request
