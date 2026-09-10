@@ -39,3 +39,11 @@
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Snappier.dll
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/ZstdSharp.dll
 /Volumes/personal/project/Food/SaveBite/SaveBite.API/obj/Debug/net8.0/SaveBite.API.sourcelink.json
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.AspNetCore.Authentication.JwtBearer.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.Abstractions.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.JsonWebTokens.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.Logging.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.Protocols.OpenIdConnect.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/Microsoft.IdentityModel.Tokens.dll
+/Volumes/personal/project/Food/SaveBite/SaveBite.API/bin/Debug/net8.0/System.IdentityModel.Tokens.Jwt.dll
