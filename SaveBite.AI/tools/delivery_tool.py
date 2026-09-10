@@ -16,12 +16,13 @@ async def get_delivery_request(
     delivery_request_id: str,
 ) -> dict:
     """
-    Retrieve a delivery request from the C# backend.
+    Retrieve a delivery request.
     """
 
     url = (
         f"{settings.csharp_api_url}"
-        f"/api/Delivery/{delivery_request_id}"
+        f"/api/internal-ai/delivery/"
+        f"{delivery_request_id}"
     )
 
     try:
@@ -59,22 +60,25 @@ async def find_nearby_delivery_persons(
     latitude: float,
     longitude: float,
     radius_in_kilometers: float = 10,
+    excluded_delivery_person_ids: list[str] | None = None,
 ) -> dict:
     """
-    Find currently available delivery persons
-    near a pickup location.
+    Find available delivery persons near a location.
+
+    Previously rejected delivery persons can be excluded.
     """
 
     url = (
         f"{settings.csharp_api_url}"
-        "/api/internal-ai/delivery/"
-        "nearby-persons"
+        "/api/internal-ai/delivery/nearby-persons"
     )
 
     payload = {
         "latitude": latitude,
         "longitude": longitude,
         "radiusInKilometers": radius_in_kilometers,
+        "excludedDeliveryPersonIds":
+            excluded_delivery_person_ids or [],
     }
 
     try:
@@ -89,6 +93,7 @@ async def find_nearby_delivery_persons(
             )
 
         if response.status_code == 200:
+
             return {
                 "success": True,
                 "data": response.json(),
@@ -101,6 +106,7 @@ async def find_nearby_delivery_persons(
         }
 
     except httpx.RequestError as exc:
+
         return {
             "success": False,
             "error": "C# API connection failed.",
@@ -124,7 +130,8 @@ async def assign_delivery_person(
     )
 
     payload = {
-        "deliveryPersonId": delivery_person_id,
+        "deliveryPersonId":
+            delivery_person_id,
     }
 
     try:
@@ -139,6 +146,7 @@ async def assign_delivery_person(
             )
 
         if response.status_code == 200:
+
             return {
                 "success": True,
                 "data": response.json(),
@@ -151,6 +159,7 @@ async def assign_delivery_person(
         }
 
     except httpx.RequestError as exc:
+
         return {
             "success": False,
             "error": "C# API connection failed.",

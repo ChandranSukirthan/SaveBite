@@ -1,7 +1,9 @@
 from fastapi import FastAPI
-
 from langchain_core.messages import HumanMessage
 
+from agents.delivery_agent import (
+    build_delivery_graph,
+)
 from agents.food_matching_agent import (
     build_food_matching_graph,
 )
@@ -15,11 +17,11 @@ app = FastAPI(
 
 
 food_graph = build_food_matching_graph()
+delivery_graph = build_delivery_graph()
 
 
 @app.get("/health")
 async def health():
-
     return {
         "status": "ok",
         "service": "SaveBite AI Service",
@@ -35,7 +37,6 @@ async def recommend_food(
     category: str | None = None,
     max_price: float | None = None,
 ):
-
     customer_request = f"""
 Find the best surplus food options for customer
 ID: {customer_id}
@@ -70,18 +71,11 @@ surplus food.
 
     initial_state = {
         "customer_id": customer_id,
-
         "latitude": latitude,
-
         "longitude": longitude,
-
-        "radius_in_kilometers":
-            radius_in_kilometers,
-
+        "radius_in_kilometers": radius_in_kilometers,
         "category": category,
-
         "max_price": max_price,
-
         "messages": [
             HumanMessage(
                 content=customer_request
@@ -90,6 +84,53 @@ surplus food.
     }
 
     result = await food_graph.ainvoke(
+        initial_state
+    )
+
+    messages = result.get(
+        "messages",
+        [],
+    )
+
+    final_message = ""
+
+    if messages:
+        final_message = messages[-1].content
+
+    return {
+        "message": final_message,
+    }
+
+
+@app.post("/agents/delivery/assign")
+async def assign_delivery(
+    delivery_request_id: str,
+):
+    request = f"""
+Assign a delivery person to delivery request:
+
+{delivery_request_id}
+
+Find suitable nearby available drivers,
+evaluate them, and assign the best available
+candidate.
+
+If a driver becomes unavailable, continue with
+another suitable candidate.
+"""
+
+    initial_state = {
+        "delivery_request_id": delivery_request_id,
+        "retry_count": 0,
+        "max_retries": 3,
+        "messages": [
+            HumanMessage(
+                content=request
+            )
+        ],
+    }
+
+    result = await delivery_graph.ainvoke(
         initial_state
     )
 

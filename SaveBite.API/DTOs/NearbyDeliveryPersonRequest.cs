@@ -7,4 +7,6 @@ public class NearbyDeliveryPersonRequest
     public double Longitude { get; set; }
 
     public double RadiusInKilometers { get; set; } = 10;
+
+    public List<string> ExcludedDeliveryPersonIds { get; set; } = new();
 }

@@ -4,8 +4,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     csharp_api_url: str = "http://localhost:5000"
 
-    ai_service_key: str = "savebite-ai-development-key"
-    ai_api_key: str = "savebite-ai-development-key"
+    ai_service_key: str = "savebite-internal-ai-development-key"
+    ai_api_key: str = "savebite-internal-ai-development-key"
 
     gemini_api_key: str = ""
 

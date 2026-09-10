@@ -672,17 +672,29 @@ public class DeliveryController : ControllerBase
         var maxDistance =
             request.RadiusInKilometers * 1000;
 
-        var filter =
-            Builders<DeliveryPerson>.Filter.And(
-                Builders<DeliveryPerson>.Filter.NearSphere(
-                    x => x.Location,
-                    point,
-                    maxDistance),
+        var filters = new List<FilterDefinition<DeliveryPerson>>
+        {
+            Builders<DeliveryPerson>.Filter.NearSphere(
+                x => x.Location,
+                point,
+                maxDistance),
 
-                Builders<DeliveryPerson>.Filter.Eq(
-                    x => x.IsAvailable,
-                    true)
-            );
+            Builders<DeliveryPerson>.Filter.Eq(
+                x => x.IsAvailable,
+                true)
+        };
+
+        if (request.ExcludedDeliveryPersonIds != null &&
+            request.ExcludedDeliveryPersonIds.Count > 0)
+        {
+            filters.Add(
+                Builders<DeliveryPerson>.Filter.Nin(
+                    x => x.Id,
+                    request.ExcludedDeliveryPersonIds));
+        }
+
+        var filter =
+            Builders<DeliveryPerson>.Filter.And(filters);
 
         var persons =
             await _deliveryPersons

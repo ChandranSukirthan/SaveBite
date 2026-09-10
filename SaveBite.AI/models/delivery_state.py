@@ -14,9 +14,11 @@ class DeliveryAgentState(TypedDict, total=False):
     restaurant_id: str
 
     pickup_latitude: float
+
     pickup_longitude: float
 
     delivery_latitude: float
+
     delivery_longitude: float
 
     candidate_drivers: list
@@ -24,6 +26,8 @@ class DeliveryAgentState(TypedDict, total=False):
     selected_driver: dict
 
     assignment_result: dict
+
+    excluded_driver_ids: list[str]
 
     retry_count: int
 
@@ -37,4 +41,3 @@ class DeliveryAgentState(TypedDict, total=False):
     status: str
 
     message: str
-
