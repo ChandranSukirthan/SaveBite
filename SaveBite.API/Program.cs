@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using SaveBite.API.Configuration;
 using SaveBite.API.Middleware;
+using SaveBite.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -42,6 +43,8 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddControllers();
+
+builder.Services.AddHttpClient<AIServiceClient>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();

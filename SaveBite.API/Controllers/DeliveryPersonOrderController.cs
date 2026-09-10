@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using SaveBite.API.Configuration;
 using SaveBite.API.DTOs;
 using SaveBite.API.Models;
+using SaveBite.API.Services;
 
 namespace SaveBite.API.Controllers;
 
@@ -16,9 +17,11 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly IMongoCollection<DeliveryPerson> _deliveryPersons;
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<Order> _orders;
+    private readonly AIServiceClient _aiServiceClient;
 
     public DeliveryPersonOrderController(
-        MongoDbContext mongoDbContext)
+        MongoDbContext mongoDbContext,
+        AIServiceClient aiServiceClient)
     {
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
@@ -28,6 +31,8 @@ public class DeliveryPersonOrderController : ControllerBase
 
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
+
+        _aiServiceClient = aiServiceClient;
     }
 
    
@@ -130,48 +135,98 @@ public class DeliveryPersonOrderController : ControllerBase
 
         if (!request.Accept)
         {
-            // Driver rejected the request.
             var rejectUpdate =
                 Builders<DeliveryRequest>.Update
                     .Set(
                         x => x.DeliveryPersonId,
                         null)
+
                     .Set(
                         x => x.Status,
                         DeliveryRequestStatus.Searching)
+
                     .Set(
                         x => x.AssignedAt,
                         null)
+
                     .Set(
                         x => x.UpdatedAt,
                         DateTime.UtcNow);
 
-            await _deliveryRequests.UpdateOneAsync(
-                x =>
-                    x.Id == id &&
-                    x.DeliveryPersonId == deliveryPerson.Id &&
-                    x.Status == DeliveryRequestStatus.Assigned,
-                rejectUpdate);
+            var rejectResult =
+                await _deliveryRequests.UpdateOneAsync(
+                    x =>
+                        x.Id == id &&
+                        x.DeliveryPersonId ==
+                            deliveryPerson.Id &&
+                        x.Status ==
+                            DeliveryRequestStatus.Assigned,
 
-            // Make driver available again.
-            var driverUpdate =
+                    rejectUpdate);
+
+            if (rejectResult.ModifiedCount == 0)
+            {
+                return Conflict(new
+                {
+                    message =
+                        "The delivery request has already been processed."
+                });
+            }
+
+            // Driver becomes available again.
+            await _deliveryPersons.UpdateOneAsync(
+                x => x.Id == deliveryPerson.Id,
+
                 Builders<DeliveryPerson>.Update
                     .Set(
                         x => x.IsAvailable,
-                        true);
+                        true)
+            );
 
-            await _deliveryPersons.UpdateOneAsync(
-                x => x.Id == deliveryPerson.Id,
-                driverUpdate);
+            // Automatically trigger the AI retry workflow.
+            try
+            {
+                await _aiServiceClient
+                    .TriggerDeliveryRetryAsync(
+                        id,
+                        deliveryPerson.Id);
+            }
+            catch (Exception ex)
+            {
+                // The delivery remains in Searching state.
+                // It can be retried later if the AI service
+                // is temporarily unavailable.
+                return Accepted(new
+                {
+                    message =
+                        "Delivery request rejected. " +
+                        "The system could not contact the AI " +
+                        "delivery agent, so the request remains " +
+                        "in Searching state.",
+
+                    status =
+                        DeliveryRequestStatus
+                            .Searching
+                            .ToString(),
+
+                    aiTriggered = false,
+
+                    error = ex.Message
+                });
+            }
 
             return Ok(new
             {
                 message =
-                    "Delivery request rejected. " +
-                    "The system can search for another driver.",
+                    "Delivery rejected. " +
+                    "AI agent is searching for another driver.",
 
                 status =
-                    DeliveryRequestStatus.Searching.ToString()
+                    DeliveryRequestStatus
+                        .Searching
+                        .ToString(),
+
+                aiTriggered = true
             });
         }
 
