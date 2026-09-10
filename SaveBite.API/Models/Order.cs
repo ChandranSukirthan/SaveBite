@@ -55,6 +55,19 @@ public class Order
     [BsonElement("deliveryLocation")]
     public Location DeliveryLocation { get; set; } = new();
 
+    [BsonElement("deliveryRequestId")]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public string? DeliveryRequestId { get; set; }
+
+    [BsonElement("deliveryPersonId")]
+    [BsonRepresentation(BsonType.ObjectId)]
+
+    public string? DeliveryPersonId { get; set; }
+
+
+
+
+
     [BsonElement("status")]
     [BsonRepresentation(BsonType.String)]
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
@@ -64,4 +77,6 @@ public class Order
 
     [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+
+    
 }
