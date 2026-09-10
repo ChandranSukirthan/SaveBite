@@ -47,6 +47,14 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var mongoDbContext = scope.ServiceProvider
+        .GetRequiredService<MongoDbContext>();
+
+    await MongoDbIndexes.CreateAsync(mongoDbContext);
+}
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
