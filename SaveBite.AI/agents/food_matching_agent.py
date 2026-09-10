@@ -1,5 +1,6 @@
 from models.food_state import FoodAgentState
 from tools.food_tool import search_nearby_food
+from langgraph.graph import StateGraph, START, END
 
 
 async def search_food_node(
@@ -131,3 +132,34 @@ async def rank_food_node(
     return {
         "recommendations": ranked[:5],
     }
+
+
+def build_food_matching_graph():
+    graph = StateGraph(FoodAgentState)
+
+    graph.add_node(
+        "search_food",
+        search_food_node,
+    )
+
+    graph.add_node(
+        "rank_food",
+        rank_food_node,
+    )
+
+    graph.add_edge(
+        START,
+        "search_food",
+    )
+
+    graph.add_edge(
+        "search_food",
+        "rank_food",
+    )
+
+    graph.add_edge(
+        "rank_food",
+        END,
+    )
+
+    return graph.compile()

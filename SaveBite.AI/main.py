@@ -1,13 +1,20 @@
-from fastapi import FastAPI, Header
 from typing import Optional
 
-from tools.food_tool import search_nearby_food
+from fastapi import FastAPI, Header
+
+from agents.food_matching_agent import (
+    build_food_matching_graph,
+)
+
 
 app = FastAPI(
     title="SaveBite AI Service",
     description="Agentic AI service for SaveBite",
     version="1.0.0",
 )
+
+
+food_graph = build_food_matching_graph()
 
 
 @app.get("/health")
@@ -18,8 +25,8 @@ async def health():
     }
 
 
-@app.post("/tools/search-food")
-async def test_food_search(
+@app.post("/agents/food/recommend")
+async def recommend_food(
     latitude: float,
     longitude: float,
     radius_in_kilometers: float = 5,
@@ -37,11 +44,27 @@ async def test_food_search(
                 len("Bearer "):
             ]
 
-    return await search_nearby_food(
-        latitude=latitude,
-        longitude=longitude,
-        radius_in_kilometers=radius_in_kilometers,
-        category=category,
-        max_price=max_price,
-        access_token=access_token,
+    initial_state = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius_in_kilometers":
+            radius_in_kilometers,
+        "category": category,
+        "max_price": max_price,
+        "access_token": access_token,
+    }
+
+    result = await food_graph.ainvoke(
+        initial_state
     )
+
+    return {
+        "message": result.get(
+            "message",
+            "Food recommendation completed.",
+        ),
+        "recommendations": result.get(
+            "recommendations",
+            [],
+        ),
+    }
