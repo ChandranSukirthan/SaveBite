@@ -30,3 +30,27 @@ export async function register(
 
   return response.data;
 }
+
+export function logout(): void {
+  localStorage.removeItem("savebite_token");
+  localStorage.removeItem("savebite_user");
+}
+
+export function getStoredToken(): string | null {
+  return localStorage.getItem("savebite_token");
+}
+
+export function getStoredUser(): LoginResponse["user"] | null {
+  const userJson = localStorage.getItem("savebite_user");
+  if (!userJson) return null;
+  try {
+    return JSON.parse(userJson);
+  } catch {
+    return null;
+  }
+}
+
+export function storeAuthData(token: string, user: LoginResponse["user"]): void {
+  localStorage.setItem("savebite_token", token);
+  localStorage.setItem("savebite_user", JSON.stringify(user));
+}

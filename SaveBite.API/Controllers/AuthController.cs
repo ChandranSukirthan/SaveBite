@@ -1,5 +1,10 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using BCrypt.Net;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using SaveBite.API.Configuration;
 using SaveBite.API.DTOs;
@@ -12,10 +17,14 @@ namespace SaveBite.API.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IMongoCollection<User> _users;
+    private readonly JwtSettings _jwtSettings;
 
-    public AuthController(MongoDbContext mongoDbContext)
+    public AuthController(
+        MongoDbContext mongoDbContext,
+        IOptions<JwtSettings> jwtOptions)
     {
         _users = mongoDbContext.Database.GetCollection<User>("users");
+        _jwtSettings = jwtOptions.Value;
     }
 
     [HttpPost("register")]
@@ -82,6 +91,82 @@ public class AuthController : ControllerBase
         return Ok(new
         {
             message = "Registration successful.",
+            user = new
+            {
+                user.Id,
+                user.FullName,
+                user.Email,
+                role = user.Role.ToString()
+            }
+        });
+    }
+
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new
+            {
+                message = "Email is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Password))
+        {
+            return BadRequest(new
+            {
+                message = "Password is required."
+            });
+        }
+
+        var user = await _users
+            .Find(x => x.Email.ToLower() == request.Email.Trim().ToLower())
+            .FirstOrDefaultAsync();
+
+        if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        {
+            return Unauthorized(new
+            {
+                message = "Invalid email or password."
+            });
+        }
+
+        if (!user.IsActive)
+        {
+            return Unauthorized(new
+            {
+                message = "Your account has been deactivated. Please contact support."
+            });
+        }
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var key = Encoding.UTF8.GetBytes(_jwtSettings.SecretKey);
+
+        var tokenDescriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Name, user.FullName),
+                new Claim(ClaimTypes.Role, user.Role.ToString())
+            }),
+            Expires = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationInMinutes),
+            Issuer = _jwtSettings.Issuer,
+            Audience = _jwtSettings.Audience,
+            SigningCredentials = new SigningCredentials(
+                new SymmetricSecurityKey(key),
+                SecurityAlgorithms.HmacSha256Signature)
+        };
+
+        var token = tokenHandler.CreateToken(tokenDescriptor);
+        var tokenString = tokenHandler.WriteToken(token);
+
+        return Ok(new
+        {
+            message = "Login successful.",
+            token = tokenString,
             user = new
             {
                 user.Id,
