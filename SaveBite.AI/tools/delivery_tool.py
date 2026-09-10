@@ -215,3 +215,49 @@ async def calculate_delivery_quote(
             ),
         "pricing_model": "development",
     }
+
+
+@tool
+async def get_delivery_estimate(
+    order_id: str,
+) -> dict:
+    """
+    Retrieve the estimated delivery fee,
+    distance, and ETA for an order.
+    """
+
+    url = (
+        f"{settings.csharp_api_url}"
+        f"/api/internal-ai/delivery-estimate/"
+        f"{order_id}"
+    )
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=15.0
+        ) as client:
+
+            response = await client.get(
+                url,
+                headers=get_headers(),
+            )
+
+        if response.status_code == 200:
+            return {
+                "success": True,
+                "data": response.json(),
+            }
+
+        return {
+            "success": False,
+            "status_code": response.status_code,
+            "error": response.text,
+        }
+
+    except httpx.RequestError as exc:
+        return {
+            "success": False,
+            "error":
+                "C# API connection failed.",
+            "details": str(exc),
+        }

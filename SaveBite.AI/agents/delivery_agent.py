@@ -16,6 +16,7 @@ from tools.delivery_tool import (
     assign_delivery_person,
     calculate_delivery_quote,
     find_nearby_delivery_persons,
+    get_delivery_estimate,
     get_delivery_request,
 )
 
@@ -29,9 +30,10 @@ delivery person for a food order.
 Available tools:
 
 1. get_delivery_request
-2. find_nearby_delivery_persons
-3. calculate_delivery_quote
-4. assign_delivery_person
+2. get_delivery_estimate
+3. find_nearby_delivery_persons
+4. calculate_delivery_quote
+5. assign_delivery_person
 
 You should:
 
@@ -68,6 +70,7 @@ not simply the cheapest option.
 
 tools = [
     get_delivery_request,
+    get_delivery_estimate,
     find_nearby_delivery_persons,
     calculate_delivery_quote,
     assign_delivery_person,
