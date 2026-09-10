@@ -632,6 +632,317 @@ public class DeliveryController : ControllerBase
         });
     }
 
+    [HttpPost("/api/internal-ai/delivery/nearby-persons")]
+    public async Task<IActionResult> FindNearbyDeliveryPersonsForAI(
+        NearbyDeliveryPersonRequest request)
+    {
+        if (request.Latitude < -90 ||
+            request.Latitude > 90)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid latitude."
+            });
+        }
+
+        if (request.Longitude < -180 ||
+            request.Longitude > 180)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid longitude."
+            });
+        }
+
+        if (request.RadiusInKilometers <= 0 ||
+            request.RadiusInKilometers > 50)
+        {
+            return BadRequest(new
+            {
+                message = "Invalid search radius."
+            });
+        }
+
+        var point =
+            GeoJson.Point(
+                GeoJson.Geographic(
+                    request.Longitude,
+                    request.Latitude));
+
+        var maxDistance =
+            request.RadiusInKilometers * 1000;
+
+        var filter =
+            Builders<DeliveryPerson>.Filter.And(
+                Builders<DeliveryPerson>.Filter.NearSphere(
+                    x => x.Location,
+                    point,
+                    maxDistance),
+
+                Builders<DeliveryPerson>.Filter.Eq(
+                    x => x.IsAvailable,
+                    true)
+            );
+
+        var persons =
+            await _deliveryPersons
+                .Find(filter)
+                .Limit(20)
+                .ToListAsync();
+
+        var results = persons
+            .Where(x =>
+                x.Location != null &&
+                x.Location.Coordinates != null &&
+                x.Location.Coordinates.Length >= 2)
+            .Select(x =>
+            {
+                var longitude =
+                    x.Location.Coordinates[0];
+
+                var latitude =
+                    x.Location.Coordinates[1];
+
+                var distance =
+                    CalculateDistanceInKilometers(
+                        request.Latitude,
+                        request.Longitude,
+                        latitude,
+                        longitude);
+
+                return new
+                {
+                    x.Id,
+                    x.UserId,
+                    x.PhoneNumber,
+                    x.VehicleType,
+                    x.VehicleNumber,
+                    x.IsAvailable,
+                    distanceInKilometers =
+                        Math.Round(distance, 2)
+                };
+            })
+            .OrderBy(x => x.distanceInKilometers)
+            .ToList();
+
+        return Ok(new
+        {
+            count = results.Count,
+            deliveryPersons = results
+        });
+    }
+
+    [HttpPost("/api/internal-ai/delivery/{id}/assign")]
+    public async Task<IActionResult> AssignDeliveryPersonForAI(
+        string id,
+        AssignDeliveryRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(
+                request.DeliveryPersonId))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Delivery person ID is required."
+            });
+        }
+
+        var deliveryRequest =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        if (deliveryRequest == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Delivery request not found."
+            });
+        }
+
+        if (deliveryRequest.Status !=
+            DeliveryRequestStatus.Searching)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery request is no longer searching."
+            });
+        }
+
+        var deliveryPerson =
+            await _deliveryPersons
+                .Find(x =>
+                    x.Id ==
+                    request.DeliveryPersonId)
+                .FirstOrDefaultAsync();
+
+        if (deliveryPerson == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Delivery person not found."
+            });
+        }
+
+        if (!deliveryPerson.IsAvailable)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery person is no longer available."
+            });
+        }
+
+        var activeDelivery =
+            await _deliveryRequests
+                .Find(x =>
+                    x.DeliveryPersonId ==
+                        deliveryPerson.Id &&
+                    (
+                        x.Status ==
+                            DeliveryRequestStatus.Assigned ||
+
+                        x.Status ==
+                            DeliveryRequestStatus.Accepted ||
+
+                        x.Status ==
+                            DeliveryRequestStatus.PickedUp ||
+
+                        x.Status ==
+                            DeliveryRequestStatus.InTransit
+                    ))
+                .FirstOrDefaultAsync();
+
+        if (activeDelivery != null)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery person already has an active delivery."
+            });
+        }
+
+        var filter =
+            Builders<DeliveryRequest>.Filter.And(
+                Builders<DeliveryRequest>.Filter.Eq(
+                    x => x.Id,
+                    id),
+
+                Builders<DeliveryRequest>.Filter.Eq(
+                    x => x.Status,
+                    DeliveryRequestStatus.Searching),
+
+                Builders<DeliveryRequest>.Filter.Eq(
+                    x => x.DeliveryPersonId,
+                    null)
+            );
+
+        var update =
+            Builders<DeliveryRequest>.Update
+                .Set(
+                    x => x.DeliveryPersonId,
+                    deliveryPerson.Id)
+
+                .Set(
+                    x => x.Status,
+                    DeliveryRequestStatus.Assigned)
+
+                .Set(
+                    x => x.AssignedAt,
+                    DateTime.UtcNow)
+
+                .Set(
+                    x => x.UpdatedAt,
+                    DateTime.UtcNow);
+
+        var result =
+            await _deliveryRequests
+                .UpdateOneAsync(
+                    filter,
+                    update);
+
+        if (result.ModifiedCount == 0)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery request was already assigned."
+            });
+        }
+
+        await _deliveryPersons.UpdateOneAsync(
+            x => x.Id == deliveryPerson.Id,
+            Builders<DeliveryPerson>.Update
+                .Set(
+                    x => x.IsAvailable,
+                    false)
+        );
+
+        await _orders.UpdateOneAsync(
+            x => x.Id == deliveryRequest.OrderId,
+            Builders<Order>.Update
+                .Set(
+                    x => x.DeliveryPersonId,
+                    deliveryPerson.Id)
+                .Set(
+                    x => x.UpdatedAt,
+                    DateTime.UtcNow)
+        );
+
+        return Ok(new
+        {
+            message =
+                "Delivery person assigned successfully.",
+
+            deliveryRequestId = id,
+
+            deliveryPerson = new
+            {
+                deliveryPerson.Id,
+                deliveryPerson.PhoneNumber,
+                deliveryPerson.VehicleType,
+                deliveryPerson.VehicleNumber
+            },
+
+            status =
+                DeliveryRequestStatus
+                    .Assigned
+                    .ToString()
+        });
+    }
+
+    [HttpGet("/api/internal-ai/delivery/{id}")]
+    public async Task<IActionResult> GetDeliveryRequestForAI(
+        string id)
+    {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return BadRequest(new
+            {
+                message =
+                    "Delivery request ID is required."
+            });
+        }
+
+        var deliveryRequest =
+            await _deliveryRequests
+                .Find(x => x.Id == id)
+                .FirstOrDefaultAsync();
+
+        if (deliveryRequest == null)
+        {
+            return NotFound(new
+            {
+                message =
+                    "Delivery request not found."
+            });
+        }
+
+        return Ok(deliveryRequest);
+    }
 
     // CALCULATE DELIVERY FEE
     // Temporary development logic
