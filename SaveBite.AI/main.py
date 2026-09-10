@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from langchain_core.messages import HumanMessage
 
 from agents.delivery_agent import (
@@ -11,12 +12,22 @@ from agents.order_agent import (
     build_order_graph,
 )
 from config.settings import settings
+from tools.customer_tool import get_customer_profile
+from tools.food_tool import search_nearby_food
 
 
 app = FastAPI(
     title="SaveBite AI Service",
     description="Agentic AI service for SaveBite",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 

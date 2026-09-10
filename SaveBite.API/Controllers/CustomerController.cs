@@ -175,6 +175,7 @@ public class CustomerController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpGet("/api/internal-ai/customers/{customerId}")]
     public async Task<IActionResult> GetCustomerForAI(
         string customerId)

@@ -321,6 +321,7 @@ public class FoodDiscoveryController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpGet("/api/internal-ai/food/{id}")]
     public async Task<IActionResult> GetFoodForAI(
         string id)
@@ -386,6 +387,7 @@ public class FoodDiscoveryController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpGet("/api/internal-ai/restaurants/{id}")]
     public async Task<IActionResult> GetRestaurantForAI(
         string id)
@@ -422,6 +424,7 @@ public class FoodDiscoveryController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpPost("/api/internal-ai/food/search")]
     public async Task<IActionResult> SearchFoodForAI(
         FoodSearchRequest request)
