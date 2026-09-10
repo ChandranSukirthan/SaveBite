@@ -6,41 +6,25 @@ from config.settings import settings
 
 
 @tool
-async def search_nearby_food(
-    latitude: float,
-    longitude: float,
-    radius_in_kilometers: float = 5,
-    category: str | None = None,
-    max_price: float | None = None,
+async def get_customer_profile(
+    customer_id: str,
 ) -> dict:
     """
-    Search available surplus food through the C# API.
-
-    The AI service never accesses MongoDB directly.
+    Get a customer's saved preferences, budget,
+    location, and profile information from SaveBite.
     """
 
     url = (
         f"{settings.csharp_api_url}"
-        "/api/FoodDiscovery/search"
+        f"/api/Customer/internal/{customer_id}"
     )
-
-    payload = {
-        "latitude": latitude,
-        "longitude": longitude,
-        "radiusInKilometers": radius_in_kilometers,
-        "category": category,
-        "maxPrice": max_price,
-    }
 
     try:
         async with httpx.AsyncClient(
             timeout=15.0
         ) as client:
 
-            response = await client.post(
-                url,
-                json=payload,
-            )
+            response = await client.get(url)
 
         if response.status_code == 200:
             return {
@@ -60,3 +44,4 @@ async def search_nearby_food(
             "error": "C# API connection failed.",
             "details": str(exc),
         }
+
