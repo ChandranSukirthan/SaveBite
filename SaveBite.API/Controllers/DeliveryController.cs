@@ -341,9 +341,6 @@ public class DeliveryController : ControllerBase
          */
 
         var point =
-            new MongoDB.Driver.GeoJson2DGeographicCoordinates(
-                request.Longitude,
-                request.Latitude);
             GeoJson.Point(
                 GeoJson.Geographic(
                     request.Longitude,
@@ -440,6 +437,198 @@ public class DeliveryController : ControllerBase
             radiusInKilometers =
                 request.RadiusInKilometers,
             deliveryPersons = results
+        });
+    }
+
+    // ============================================================
+    // ASSIGN DELIVERY PERSON
+    // POST: /api/Delivery/{id}/assign
+    // Restaurant Owner / Admin
+    // ============================================================
+
+    [HttpPost("{id}/assign")]
+    [Authorize(Roles = "RestaurantOwner,Admin")]
+    public async Task<IActionResult> AssignDeliveryPerson(
+        string id,
+        AssignDeliveryRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.DeliveryPersonId))
+        {
+            return BadRequest(new
+            {
+                message = "Delivery person ID is required."
+            });
+        }
+
+        // Find delivery request
+        var deliveryRequest = await _deliveryRequests
+            .Find(x => x.Id == id)
+            .FirstOrDefaultAsync();
+
+        if (deliveryRequest == null)
+        {
+            return NotFound(new
+            {
+                message = "Delivery request not found."
+            });
+        }
+
+        // Only searching requests can be assigned
+        if (deliveryRequest.Status !=
+            DeliveryRequestStatus.Searching)
+        {
+            return BadRequest(new
+            {
+                message =
+                    $"Delivery request cannot be assigned when status is " +
+                    $"{deliveryRequest.Status}."
+            });
+        }
+
+        // Find delivery person
+        var deliveryPerson = await _deliveryPersons
+            .Find(x => x.Id == request.DeliveryPersonId)
+            .FirstOrDefaultAsync();
+
+        if (deliveryPerson == null)
+        {
+            return NotFound(new
+            {
+                message = "Delivery person not found."
+            });
+        }
+
+        // Driver must be available
+        if (!deliveryPerson.IsAvailable)
+        {
+            return BadRequest(new
+            {
+                message = "Delivery person is not currently available."
+            });
+        }
+
+        // Make sure the driver isn't already assigned to
+        // another active delivery.
+        var activeDelivery = await _deliveryRequests
+            .Find(x =>
+                x.DeliveryPersonId == deliveryPerson.Id &&
+                (
+                    x.Status == DeliveryRequestStatus.Assigned ||
+                    x.Status == DeliveryRequestStatus.Accepted ||
+                    x.Status == DeliveryRequestStatus.PickedUp ||
+                    x.Status == DeliveryRequestStatus.InTransit
+                ))
+            .FirstOrDefaultAsync();
+
+        if (activeDelivery != null)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery person already has an active delivery.",
+                activeDeliveryId = activeDelivery.Id
+            });
+        }
+
+        // Atomically assign the driver.
+        var deliveryFilter =
+            Builders<DeliveryRequest>.Filter.And(
+                Builders<DeliveryRequest>.Filter.Eq(
+                    x => x.Id,
+                    id),
+
+                Builders<DeliveryRequest>.Filter.Eq(
+                    x => x.Status,
+                    DeliveryRequestStatus.Searching)
+            );
+
+        var deliveryUpdate =
+            Builders<DeliveryRequest>.Update
+                .Set(
+                    x => x.DeliveryPersonId,
+                    deliveryPerson.Id)
+                .Set(
+                    x => x.Status,
+                    DeliveryRequestStatus.Assigned)
+                .Set(
+                    x => x.AssignedAt,
+                    DateTime.UtcNow)
+                .Set(
+                    x => x.UpdatedAt,
+                    DateTime.UtcNow);
+
+        var updateResult =
+            await _deliveryRequests.UpdateOneAsync(
+                deliveryFilter,
+                deliveryUpdate);
+
+        if (updateResult.ModifiedCount == 0)
+        {
+            return Conflict(new
+            {
+                message =
+                    "Delivery request was already assigned or changed."
+            });
+        }
+
+        // Mark delivery person unavailable while assigned.
+        var driverFilter =
+            Builders<DeliveryPerson>.Filter.And(
+                Builders<DeliveryPerson>.Filter.Eq(
+                    x => x.Id,
+                    deliveryPerson.Id),
+
+                Builders<DeliveryPerson>.Filter.Eq(
+                    x => x.IsAvailable,
+                    true)
+            );
+
+        var driverUpdate =
+            Builders<DeliveryPerson>.Update
+                .Set(
+                    x => x.IsAvailable,
+                    false);
+
+        await _deliveryPersons.UpdateOneAsync(
+            driverFilter,
+            driverUpdate);
+
+        // Update the order
+        var orderUpdate =
+            Builders<Order>.Update
+                .Set(
+                    x => x.DeliveryPersonId,
+                    deliveryPerson.Id)
+                .Set(
+                    x => x.Status,
+                    OrderStatus.ReadyForPickup)
+                .Set(
+                    x => x.UpdatedAt,
+                    DateTime.UtcNow);
+
+        await _orders.UpdateOneAsync(
+            x => x.Id == deliveryRequest.OrderId,
+            orderUpdate);
+
+        return Ok(new
+        {
+            message =
+                "Delivery person assigned successfully.",
+
+            deliveryRequestId =
+                deliveryRequest.Id,
+
+            deliveryPerson = new
+            {
+                deliveryPerson.Id,
+                deliveryPerson.PhoneNumber,
+                deliveryPerson.VehicleType,
+                deliveryPerson.VehicleNumber
+            },
+
+            status = DeliveryRequestStatus
+                .Assigned
+                .ToString()
         });
     }
 
