@@ -1,165 +1,186 @@
+from langchain_core.messages import (
+    HumanMessage,
+    SystemMessage,
+)
+
+from langgraph.graph import (
+    END,
+    START,
+    StateGraph,
+)
+
+from langgraph.prebuilt import ToolNode
+
 from models.food_state import FoodAgentState
+
+from services.llm_service import get_llm
+
+from tools.customer_tool import get_customer_profile
+
 from tools.food_tool import search_nearby_food
-from langgraph.graph import StateGraph, START, END
 
 
-async def search_food_node(
+SYSTEM_PROMPT = """
+You are the SaveBite Food Matching Agent.
+
+Your objective is to help customers find suitable
+surplus food while helping restaurants reduce food waste.
+
+Available tools:
+
+1. get_customer_profile
+   Use this to retrieve the customer's saved
+   preferences, budget, and location.
+
+2. search_nearby_food
+   Use this to retrieve currently available
+   surplus food near a location.
+
+Your workflow should be:
+
+1. Understand the customer's request.
+2. Retrieve the customer's profile when a
+   customer ID is available.
+3. Determine the customer's preferences,
+   budget, and location.
+4. Search for nearby available surplus food.
+5. Compare the available options.
+6. Recommend the most suitable food.
+
+Consider:
+
+- Food category preference
+- Maximum budget
+- Distance
+- Quantity
+- Availability
+- Remaining availability time
+- Food waste reduction
+
+Rules:
+
+- Never invent food.
+- Never invent a restaurant.
+- Only recommend food returned by tools.
+- Never recommend food above the customer's
+  maximum budget when a budget is available.
+- Prefer closer options when other factors
+  are similar.
+- Prefer food that is approaching its
+  availability deadline when appropriate.
+- Do not expose internal IDs unnecessarily.
+- Explain briefly why each recommended item
+  is suitable.
+"""
+
+
+def create_agent_llm():
+
+    llm = get_llm()
+
+    tools = [
+        get_customer_profile,
+        search_nearby_food,
+    ]
+
+    return llm.bind_tools(tools)
+
+
+async def agent_node(
     state: FoodAgentState,
 ) -> FoodAgentState:
-    """
-    Search nearby available surplus food
-    using the C# backend.
-    """
 
-    result = await search_nearby_food(
-        latitude=state["latitude"],
-        longitude=state["longitude"],
-        radius_in_kilometers=state.get(
-            "radius_in_kilometers",
-            5,
-        ),
-        category=state.get("category"),
-        max_price=state.get("max_price"),
-        access_token=state.get("access_token"),
-    )
+    llm = create_agent_llm()
 
-    if not result.get("success"):
-        return {
-            "available_food": [],
-            "recommendations": [],
-            "message": (
-                "Unable to search nearby food."
-            ),
-        }
-
-    food = result.get("data", [])
-
-    return {
-        "available_food": food,
-        "message": (
-            f"Found {len(food)} available "
-            "food option(s)."
-        ),
-    }
-
-
-async def rank_food_node(
-    state: FoodAgentState,
-) -> FoodAgentState:
-    """
-    Rank food based on simple business rules.
-
-    AI/LLM ranking will be added later.
-    """
-
-    food_items = state.get(
-        "available_food",
+    messages = state.get(
+        "messages",
         [],
     )
 
-    max_price = state.get("max_price")
+    if not messages:
 
-    ranked = []
+        messages = [
+            SystemMessage(
+                content=SYSTEM_PROMPT
+            )
+        ]
 
-    for food in food_items:
-
-        distance = food.get(
-            "distanceInKilometers",
-            999999,
-        )
-
-        price = food.get(
-            "price",
-            999999,
-        )
-
-        quantity = food.get(
-            "quantity",
-            0,
-        )
-
-        score = 0.0
-
-        # Closer food gets higher score.
-        if distance <= 1:
-            score += 40
-        elif distance <= 3:
-            score += 30
-        elif distance <= 5:
-            score += 20
-        else:
-            score += 10
-
-        # Lower price gets higher score.
-        if max_price is not None and max_price > 0:
-
-            price_ratio = price / max_price
-
-            if price_ratio <= 0.5:
-                score += 30
-            elif price_ratio <= 0.75:
-                score += 20
-            elif price_ratio <= 1:
-                score += 10
-
-        else:
-
-            if price <= 300:
-                score += 25
-            elif price <= 500:
-                score += 15
-            else:
-                score += 5
-
-        # Available quantity contributes to score.
-        if quantity >= 5:
-            score += 10
-        elif quantity > 0:
-            score += 5
-
-        food_with_score = {
-            **food,
-            "matchScore": round(score, 2),
-        }
-
-        ranked.append(food_with_score)
-
-    ranked.sort(
-        key=lambda item: item["matchScore"],
-        reverse=True,
+    response = await llm.ainvoke(
+        messages
     )
 
     return {
-        "recommendations": ranked[:5],
+        "messages": [response]
     }
 
 
-def build_food_matching_graph():
-    graph = StateGraph(FoodAgentState)
+tools = [
+    get_customer_profile,
+    search_nearby_food,
+]
 
-    graph.add_node(
-        "search_food",
-        search_food_node,
+tool_node = ToolNode(tools)
+
+
+def route_after_agent(
+    state: FoodAgentState,
+):
+
+    messages = state.get(
+        "messages",
+        [],
+    )
+
+    if not messages:
+        return END
+
+    last_message = messages[-1]
+
+    tool_calls = getattr(
+        last_message,
+        "tool_calls",
+        None,
+    )
+
+    if tool_calls:
+        return "tools"
+
+    return END
+
+
+def build_food_matching_graph():
+
+    graph = StateGraph(
+        FoodAgentState
     )
 
     graph.add_node(
-        "rank_food",
-        rank_food_node,
+        "agent",
+        agent_node,
+    )
+
+    graph.add_node(
+        "tools",
+        tool_node,
     )
 
     graph.add_edge(
         START,
-        "search_food",
+        "agent",
+    )
+
+    graph.add_conditional_edges(
+        "agent",
+        route_after_agent,
+        {
+            "tools": "tools",
+            END: END,
+        },
     )
 
     graph.add_edge(
-        "search_food",
-        "rank_food",
-    )
-
-    graph.add_edge(
-        "rank_food",
-        END,
+        "tools",
+        "agent",
     )
 
     return graph.compile()

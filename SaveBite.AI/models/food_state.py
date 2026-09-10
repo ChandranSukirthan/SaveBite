@@ -1,4 +1,7 @@
-from typing import TypedDict, Optional
+from typing import Annotated, Optional, TypedDict
+
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class FoodAgentState(TypedDict, total=False):
@@ -10,12 +13,18 @@ class FoodAgentState(TypedDict, total=False):
     radius_in_kilometers: float
 
     category: Optional[str]
+
     max_price: Optional[float]
 
-    access_token: Optional[str]
+    customer_profile: dict
 
     available_food: list
 
     recommendations: list
+
+    messages: Annotated[
+        list[BaseMessage],
+        add_messages,
+    ]
 
     message: str

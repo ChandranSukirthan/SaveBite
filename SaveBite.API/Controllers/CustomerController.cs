@@ -136,4 +136,42 @@ public class CustomerController : ControllerBase
 
         return Ok(customer);
     }
+
+    [HttpGet("internal/{customerId}")]
+    [Authorize]
+    public async Task<IActionResult> GetCustomerProfileInternal(
+        string customerId)
+    {
+        if (string.IsNullOrWhiteSpace(customerId))
+        {
+            return BadRequest(new
+            {
+                message = "Customer ID is required."
+            });
+        }
+
+        var customer = await _customers
+            .Find(x => x.Id == customerId)
+            .FirstOrDefaultAsync();
+
+        if (customer == null)
+        {
+            return NotFound(new
+            {
+                message = "Customer profile not found."
+            });
+        }
+
+        return Ok(new
+        {
+            customer.Id,
+            customer.UserId,
+            customer.PhoneNumber,
+            customer.Address,
+            customer.Location,
+            customer.PreferredCategories,
+            customer.MaximumBudget,
+            customer.CreatedAt
+        });
+    }
 }
