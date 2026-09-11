@@ -17,6 +17,7 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly IMongoCollection<DeliveryPerson> _deliveryPersons;
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<Order> _orders;
+    private readonly IMongoCollection<Restaurant> _restaurants;
     private readonly AIServiceClient _aiServiceClient;
     private readonly DeliveryNotificationService _deliveryNotificationService;
     private readonly NotificationService _notificationService;
@@ -35,6 +36,9 @@ public class DeliveryPersonOrderController : ControllerBase
 
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
+
+        _restaurants = mongoDbContext.Database
+            .GetCollection<Restaurant>("restaurants");
 
         _aiServiceClient = aiServiceClient;
         _deliveryNotificationService = deliveryNotificationService;
@@ -78,7 +82,69 @@ public class DeliveryPersonOrderController : ControllerBase
             .SortByDescending(x => x.RequestedAt)
             .ToListAsync();
 
-        return Ok(requests);
+        if (requests.Count == 0)
+        {
+            return Ok(new List<object>());
+        }
+
+        var restaurantIds = requests
+            .Select(x => x.RestaurantId)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToList();
+
+        var orderIds = requests
+            .Select(x => x.OrderId)
+            .Where(x => !string.IsNullOrEmpty(x))
+            .Distinct()
+            .ToList();
+
+        var restaurants = await _restaurants
+            .Find(x => restaurantIds.Contains(x.Id))
+            .ToListAsync();
+
+        var orders = await _orders
+            .Find(x => orderIds.Contains(x.Id))
+            .ToListAsync();
+
+        var restaurantMap = restaurants.ToDictionary(x => x.Id);
+        var orderMap = orders.ToDictionary(x => x.Id);
+
+        var enriched = requests.Select(r =>
+        {
+            restaurantMap.TryGetValue(r.RestaurantId, out var rest);
+            orderMap.TryGetValue(r.OrderId, out var ord);
+
+            return new
+            {
+                r.Id,
+                r.OrderId,
+                r.CustomerId,
+                r.RestaurantId,
+                r.DeliveryPersonId,
+                r.PickupLocation,
+                r.DeliveryLocation,
+                r.DistanceInKilometers,
+                r.DeliveryFee,
+                r.EstimatedMinutes,
+                r.Status,
+                r.RequestedAt,
+                r.AssignedAt,
+                r.AcceptedAt,
+                r.CompletedAt,
+                r.UpdatedAt,
+                Restaurant = rest != null ? new
+                {
+                    id = rest.Id,
+                    restaurantName = rest.RestaurantName,
+                    address = rest.Address,
+                    phoneNumber = rest.PhoneNumber
+                } : null,
+                DeliveryAddress = ord?.DeliveryAddress ?? string.Empty
+            };
+        });
+
+        return Ok(enriched);
     }
 
     // ACCEPT OR REJECT DELIVERY

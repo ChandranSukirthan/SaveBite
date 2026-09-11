@@ -13,12 +13,17 @@ import {
 } from "../../services/deliveryService";
 import type { DeliveryRequestItem } from "../../types/delivery";
 import type { DeliveryPersonProfile } from "../../types/profile";
+import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCard";
+import { AcceptDeliveryModal } from "../../components/delivery/AcceptDeliveryModal";
+import { RejectDeliveryModal } from "../../components/delivery/RejectDeliveryModal";
 
 export function DeliveryDashboard() {
   const [profile, setProfile] = useState<DeliveryPersonProfile | null>(null);
   const [requests, setRequests] = useState<DeliveryRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [acceptingRequest, setAcceptingRequest] = useState<DeliveryRequestItem | null>(null);
+  const [rejectingRequest, setRejectingRequest] = useState<DeliveryRequestItem | null>(null);
   const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(
     null
   );
@@ -116,21 +121,45 @@ export function DeliveryDashboard() {
     );
   };
 
-  // Accept / Reject Dispatch
-  const handleRespond = async (id: string, accept: boolean) => {
+  // Accept / Reject Handlers
+  const handleConfirmAccept = async () => {
+    if (!acceptingRequest) return;
     try {
-      setActionLoading(id);
-      const res = await respondToDelivery(id, accept);
+      setActionLoading(acceptingRequest.id);
+      const res = await respondToDelivery(acceptingRequest.id, true);
       setStatusMsg({
         type: "success",
-        text: res.message,
+        text: `🎉 ${res.message} Delivery accepted! You are now en route to the kitchen.`,
       });
+      setAcceptingRequest(null);
       await loadData();
       setTimeout(() => setStatusMsg(null), 5000);
     } catch (err: any) {
       setStatusMsg({
         type: "error",
-        text: err.response?.data?.message || "Failed to respond to delivery.",
+        text: err.response?.data?.message || "Failed to accept delivery.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingRequest) return;
+    try {
+      setActionLoading(rejectingRequest.id);
+      const res = await respondToDelivery(rejectingRequest.id, false);
+      setStatusMsg({
+        type: "success",
+        text: res.message,
+      });
+      setRejectingRequest(null);
+      await loadData();
+      setTimeout(() => setStatusMsg(null), 5000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to decline delivery.",
       });
     } finally {
       setActionLoading(null);
@@ -397,62 +426,15 @@ export function DeliveryDashboard() {
               <h3>Action Required: Respond to Delivery Assignment</h3>
             </div>
 
-            <div className="del-pending-grid">
+            <div className="drc-grid">
               {pendingRequests.map((req) => (
-                <div key={req.id} className="del-pending-card">
-                  <div className="del-card-header">
-                    <div className="del-id-group">
-                      <span className="del-req-tag">DISPATCH ASSIGNMENT</span>
-                      <strong className="del-order-id">
-                        Order #{req.orderId.slice(-6)}
-                      </strong>
-                    </div>
-                    <div className="del-payout-badge">
-                      +${req.deliveryFee.toFixed(2)} Payout
-                    </div>
-                  </div>
-
-                  <div className="del-route-specs">
-                    <div className="del-route-item">
-                      <span className="del-spec-label">Pickup Point</span>
-                      <span className="del-spec-val">
-                        🏪 Restaurant Location: [
-                        {req.pickupLocation.coordinates[1].toFixed(4)},{" "}
-                        {req.pickupLocation.coordinates[0].toFixed(4)}]
-                      </span>
-                    </div>
-                    <div className="del-route-divider">
-                      <span>↕ {req.distanceInKilometers} km transit • ~{req.estimatedMinutes} mins</span>
-                    </div>
-                    <div className="del-route-item">
-                      <span className="del-spec-label">Customer Destination</span>
-                      <span className="del-spec-val">
-                        📍 Delivery Location: [
-                        {req.deliveryLocation.coordinates[1].toFixed(4)},{" "}
-                        {req.deliveryLocation.coordinates[0].toFixed(4)}]
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="del-pending-actions">
-                    <button
-                      type="button"
-                      className="del-btn-accept"
-                      onClick={() => handleRespond(req.id, true)}
-                      disabled={actionLoading === req.id}
-                    >
-                      {actionLoading === req.id ? "Processing..." : "✓ Accept Run"}
-                    </button>
-                    <button
-                      type="button"
-                      className="del-btn-decline"
-                      onClick={() => handleRespond(req.id, false)}
-                      disabled={actionLoading === req.id}
-                    >
-                      ✕ Decline / Pass to AI
-                    </button>
-                  </div>
-                </div>
+                <DeliveryRequestCard
+                  key={req.id}
+                  request={req}
+                  onAccept={(r) => setAcceptingRequest(r)}
+                  onReject={(r) => setRejectingRequest(r)}
+                  actionLoading={actionLoading === req.id}
+                />
               ))}
             </div>
           </div>
@@ -749,6 +731,24 @@ export function DeliveryDashboard() {
           )}
         </div>
       </div>
+
+      {acceptingRequest && (
+        <AcceptDeliveryModal
+          request={acceptingRequest}
+          loading={actionLoading === acceptingRequest.id}
+          onConfirm={handleConfirmAccept}
+          onClose={() => setAcceptingRequest(null)}
+        />
+      )}
+
+      {rejectingRequest && (
+        <RejectDeliveryModal
+          request={rejectingRequest}
+          loading={actionLoading === rejectingRequest.id}
+          onConfirm={handleConfirmReject}
+          onClose={() => setRejectingRequest(null)}
+        />
+      )}
     </DeliveryLayout>
   );
 }

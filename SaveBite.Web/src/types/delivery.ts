@@ -28,6 +28,13 @@ export interface DeliveryRequestItem {
   acceptedAt?: string | null;
   completedAt?: string | null;
   updatedAt: string;
+  restaurant?: {
+    id: string;
+    restaurantName: string;
+    address: string;
+    phoneNumber?: string;
+  } | null;
+  deliveryAddress?: string;
 }
 
 export interface DriverEarningsSummary {

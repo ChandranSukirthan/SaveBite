@@ -111,6 +111,7 @@ export function DeliveryLayout({
 
   const navLinks = [
     { label: "Dashboard", path: "/delivery/dashboard", icon: "🚴" },
+    { label: "Requests", path: "/delivery/requests", icon: "⚡" },
     { label: "Rider Profile", path: "/delivery/profile", icon: "👤" },
     { label: "Vehicle Setup", path: "/delivery/profile-setup", icon: "⚙️" },
   ];

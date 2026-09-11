@@ -283,6 +283,7 @@ public class FoodDiscoveryController : ControllerBase
     // Customer
     // ============================================================
 
+    [Authorize(Roles = "Customer,DeliveryPerson")]
     [HttpGet("restaurant/{id}")]
     public async Task<IActionResult> GetRestaurantDetails(
         string id)
