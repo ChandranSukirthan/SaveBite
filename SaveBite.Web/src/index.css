@@ -6209,3 +6209,656 @@ body {
 .de-btn-outline:hover {
   background: var(--grey-100);
 }
+
+/* ============================================================
+   MILESTONE 14 — DELIVERY PARTNER PORTAL & DASHBOARD (.del-*)
+   ============================================================ */
+
+.del-portal-pill {
+  background: var(--yellow);
+  color: var(--black);
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.del-header-status-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.del-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.del-status-pill.online {
+  background: #ecfdf5;
+  color: #065f46;
+  border-color: #a7f3d0;
+}
+
+.del-status-pill.online:hover {
+  background: #d1fae5;
+}
+
+.del-status-pill.offline {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.del-status-pill.offline:hover {
+  background: #fee2e2;
+}
+
+.del-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.del-status-pill.online .del-status-dot {
+  background: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+}
+
+/* Sidebar Vehicle Widget */
+.del-sidebar-vehicle-widget {
+  background: var(--grey-100);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.del-widget-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.del-vehicle-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.del-vehicle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.del-vehicle-icon {
+  font-size: 20px;
+}
+
+.del-vehicle-name {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--black);
+  display: block;
+}
+
+.del-vehicle-plate {
+  font-size: 11px;
+  color: var(--grey-600);
+}
+
+.del-vehicle-sub {
+  font-size: 11px;
+  color: var(--grey-600);
+  border-top: 1px solid var(--grey-200);
+  padding-top: 6px;
+}
+
+.del-impact-badge {
+  background: #ecfdf5;
+  color: #065f46;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+/* Hero Availability Card */
+.del-availability-card {
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.del-availability-card.online {
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
+  border: 2px solid #86efac;
+}
+
+.del-availability-card.offline {
+  background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
+  border: 2px solid #fed7aa;
+}
+
+.del-avail-left {
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.del-avail-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.del-avail-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.del-availability-card.online .del-avail-dot {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+
+.del-availability-card.offline .del-avail-dot {
+  background: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.2);
+}
+
+.del-avail-tag {
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.del-availability-card.online .del-avail-tag {
+  color: #166534;
+}
+
+.del-availability-card.offline .del-avail-tag {
+  color: #9a3412;
+}
+
+.del-avail-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--black);
+  margin: 2px 0;
+  letter-spacing: -0.3px;
+}
+
+.del-avail-desc {
+  font-size: 13px;
+  color: var(--grey-600);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.del-avail-loc-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--grey-800);
+}
+
+.del-btn-gps {
+  background: var(--white);
+  border: 1px solid var(--grey-200);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--black);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.del-btn-gps:hover:not(:disabled) {
+  background: var(--grey-100);
+}
+
+.del-avail-right {
+  display: flex;
+  align-items: center;
+}
+
+.del-btn-toggle {
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-weight: 900;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.del-btn-toggle.to-online {
+  background: var(--yellow);
+  color: var(--black);
+  border: 1px solid var(--yellow-dark);
+}
+
+.del-btn-toggle.to-online:hover:not(:disabled) {
+  background: var(--yellow-dark);
+  transform: translateY(-1px);
+}
+
+.del-btn-toggle.to-offline {
+  background: var(--black);
+  color: var(--white);
+}
+
+.del-btn-toggle.to-offline:hover:not(:disabled) {
+  background: #262626;
+  transform: translateY(-1px);
+}
+
+/* Pending Dispatches Section */
+.del-pending-section {
+  background: #fffbeb;
+  border: 2px solid #fde68a;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.del-section-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.del-urgent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #b45309;
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  align-self: flex-start;
+}
+
+.del-section-header h3 {
+  font-size: 18px;
+  font-weight: 900;
+  color: #78350f;
+  margin: 4px 0 0;
+}
+
+.del-pending-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 16px;
+}
+
+.del-pending-card {
+  background: var(--white);
+  border: 1px solid #fef3c7;
+  border-radius: 14px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 2px 6px rgba(180, 83, 9, 0.08);
+}
+
+.del-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.del-id-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.del-req-tag {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  color: var(--grey-600);
+}
+
+.del-order-id {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--black);
+}
+
+.del-payout-badge {
+  background: #dcfce7;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 900;
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid #86efac;
+}
+
+.del-route-specs {
+  background: var(--grey-50);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.del-route-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.del-spec-label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--grey-400);
+}
+
+.del-spec-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--black);
+}
+
+.del-route-divider {
+  font-size: 11px;
+  font-weight: 800;
+  color: #b45309;
+  padding: 4px 0;
+  border-top: 1px dashed var(--grey-200);
+  border-bottom: 1px dashed var(--grey-200);
+  text-align: center;
+}
+
+.del-pending-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.del-btn-accept {
+  flex: 1;
+  background: #16a34a;
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  padding: 12px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.del-btn-accept:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.del-btn-decline {
+  background: var(--grey-100);
+  color: var(--grey-800);
+  border: 1px solid var(--grey-200);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.del-btn-decline:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+/* Active In-Flight Delivery */
+.del-active-section {
+  background: var(--white);
+  border: 2px solid var(--black);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.del-active-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.del-active-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--black);
+  color: var(--yellow);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+}
+
+.del-active-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 0 3px rgba(245, 197, 24, 0.4);
+}
+
+.del-payout-hero {
+  font-size: 18px;
+  font-weight: 900;
+  color: #15803d;
+}
+
+/* Stepper Box */
+.del-stepper-box {
+  background: var(--grey-50);
+  border-radius: 12px;
+  padding: 18px 24px;
+}
+
+.del-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.del-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  z-index: 1;
+}
+
+.del-step-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--grey-200);
+  color: var(--grey-600);
+  font-size: 13px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.del-step.complete .del-step-dot {
+  background: #16a34a;
+  color: var(--white);
+}
+
+.del-step.current .del-step-dot {
+  background: var(--black);
+  color: var(--yellow);
+  box-shadow: 0 0 0 4px rgba(245, 197, 24, 0.3);
+}
+
+.del-step-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--grey-600);
+  white-space: nowrap;
+}
+
+.del-step.complete .del-step-label,
+.del-step.current .del-step-label {
+  color: var(--black);
+  font-weight: 800;
+}
+
+.del-step-line {
+  flex: 1;
+  height: 3px;
+  background: var(--grey-200);
+  margin: 0 8px 20px;
+}
+
+.del-step-line.complete {
+  background: #16a34a;
+}
+
+/* Active Body & Columns */
+.del-active-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  padding: 16px 0;
+  border-top: 1px solid var(--grey-100);
+  border-bottom: 1px solid var(--grey-100);
+}
+
+.del-active-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.del-map-link {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e40af;
+  text-decoration: none;
+  margin-top: 4px;
+}
+
+.del-map-link:hover {
+  text-decoration: underline;
+}
+
+/* Active Footer & Actions */
+.del-active-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.del-active-status-note {
+  font-size: 13px;
+  color: var(--grey-800);
+  font-weight: 600;
+}
+
+.del-active-btn-wrap {
+  display: flex;
+  gap: 10px;
+}
+
+.del-btn-step {
+  background: var(--black);
+  color: var(--yellow);
+  border: 1px solid var(--black);
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.del-btn-step:hover:not(:disabled) {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.del-btn-complete {
+  background: #16a34a;
+  color: var(--white);
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.del-btn-complete:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+/* Profile Online/Offline Badges */
+.del-status-badge-online {
+  color: #166534;
+  font-weight: 800;
+}
+
+.del-status-badge-offline {
+  color: #991b1b;
+  font-weight: 800;
+}

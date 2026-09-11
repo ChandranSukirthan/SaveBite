@@ -1,190 +1,755 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../hooks/useAuth";
+import { useEffect, useState, useMemo } from "react";
+import { Link } from "react-router-dom";
+import { DeliveryLayout } from "../../components/layout/DeliveryLayout";
 import {
+  getMyDeliveryRequests,
   getDeliveryPersonProfile,
   updateDeliveryAvailability,
-} from "../../services/profileService";
+  updateDeliveryLocation,
+  respondToDelivery,
+  markDeliveryPickedUp,
+  startDelivery,
+  completeDelivery,
+} from "../../services/deliveryService";
+import type { DeliveryRequestItem } from "../../types/delivery";
 import type { DeliveryPersonProfile } from "../../types/profile";
 
 export function DeliveryDashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [profile, setProfile] = useState<DeliveryPersonProfile | null>(null);
+  const [requests, setRequests] = useState<DeliveryRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState(false);
-  const [statusMsg, setStatusMsg] = useState("");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: "success" | "error"; text: string } | null>(
+    null
+  );
+  const [detectingGps, setDetectingGps] = useState(false);
+  const [historyTab, setHistoryTab] = useState<"completed" | "all">("completed");
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [prof, reqs] = await Promise.all([
+        getDeliveryPersonProfile(),
+        getMyDeliveryRequests(),
+      ]);
+      setProfile(prof);
+      setRequests(reqs);
+    } catch (err: any) {
+      console.error("Failed to load driver dashboard:", err);
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to load dashboard data.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    async function loadProfile() {
-      try {
-        const data = await getDeliveryPersonProfile();
-        setProfile(data);
-      } catch (err) {
-        console.error("Failed to load delivery profile:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadProfile();
+    loadData();
   }, []);
 
+  // Availability Toggle
   const handleToggleAvailability = async () => {
     if (!profile) return;
     try {
-      setToggling(true);
-      setStatusMsg("");
+      setActionLoading("toggle");
       const newStatus = !profile.isAvailable;
       const res = await updateDeliveryAvailability(newStatus);
       setProfile((prev) => (prev ? { ...prev, isAvailable: res.isAvailable } : null));
-      setStatusMsg(res.message);
-      setTimeout(() => setStatusMsg(""), 4000);
+      setStatusMsg({
+        type: "success",
+        text: res.message,
+      });
+      setTimeout(() => setStatusMsg(null), 4000);
     } catch (err: any) {
-      console.error("Availability toggle failed:", err);
-      setStatusMsg("Failed to update availability status.");
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to update availability.",
+      });
     } finally {
-      setToggling(false);
+      setActionLoading(null);
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate("/");
+  // GPS Update
+  const handleUpdateGps = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setDetectingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lon = Number(pos.coords.longitude.toFixed(6));
+        try {
+          await updateDeliveryLocation(lat, lon);
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  location: { type: "Point", coordinates: [lon, lat] },
+                }
+              : null
+          );
+          setStatusMsg({
+            type: "success",
+            text: `GPS coordinates updated to ${lat}°N, ${lon}°W`,
+          });
+          setTimeout(() => setStatusMsg(null), 4000);
+        } catch (err: any) {
+          setStatusMsg({
+            type: "error",
+            text: err.response?.data?.message || "Failed to update GPS location.",
+          });
+        } finally {
+          setDetectingGps(false);
+        }
+      },
+      (err) => {
+        setDetectingGps(false);
+        alert(`Location detection failed: ${err.message}`);
+      },
+      { timeout: 10000 }
+    );
   };
 
+  // Accept / Reject Dispatch
+  const handleRespond = async (id: string, accept: boolean) => {
+    try {
+      setActionLoading(id);
+      const res = await respondToDelivery(id, accept);
+      setStatusMsg({
+        type: "success",
+        text: res.message,
+      });
+      await loadData();
+      setTimeout(() => setStatusMsg(null), 5000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to respond to delivery.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Progression: Picked Up
+  const handleMarkPickedUp = async (id: string) => {
+    try {
+      setActionLoading(id);
+      const res = await markDeliveryPickedUp(id);
+      setStatusMsg({ type: "success", text: res.message });
+      await loadData();
+      setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to update pickup status.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Progression: Start Transit
+  const handleStartTransit = async (id: string) => {
+    try {
+      setActionLoading(id);
+      const res = await startDelivery(id);
+      setStatusMsg({ type: "success", text: res.message });
+      await loadData();
+      setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to start delivery transit.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Progression: Complete Delivery
+  const handleCompleteDelivery = async (id: string) => {
+    try {
+      setActionLoading(id);
+      const res = await completeDelivery(id);
+      setStatusMsg({
+        type: "success",
+        text: `🎉 ${res.message} Delivery payout added to your earnings!`,
+      });
+      await loadData();
+      setTimeout(() => setStatusMsg(null), 6000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to complete delivery.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Derived KPI Metrics
+  const earningsSummary = useMemo(() => {
+    const delivered = requests.filter((r) => r.status === "Delivered");
+    const totalEarnings = delivered.reduce((sum, r) => sum + (r.deliveryFee || 0), 0);
+    const totalDistanceKm = delivered.reduce(
+      (sum, r) => sum + (r.distanceInKilometers || 0),
+      0
+    );
+    const completedCount = delivered.length;
+    const activeCount = requests.filter((r) =>
+      ["Accepted", "PickedUp", "InTransit"].includes(r.status)
+    ).length;
+    const co2SavedKg = Number((completedCount * 2.5).toFixed(1));
+
+    return {
+      totalEarnings,
+      completedCount,
+      totalDistanceKm: Number(totalDistanceKm.toFixed(1)),
+      activeCount,
+      co2SavedKg,
+    };
+  }, [requests]);
+
+  // Request categorization
+  const pendingRequests = useMemo(
+    () => requests.filter((r) => r.status === "Assigned"),
+    [requests]
+  );
+
+  const activeDelivery = useMemo(
+    () => requests.find((r) => ["Accepted", "PickedUp", "InTransit"].includes(r.status)),
+    [requests]
+  );
+
+  const completedRequests = useMemo(
+    () => requests.filter((r) => r.status === "Delivered"),
+    [requests]
+  );
+
+  const lat = profile?.location?.coordinates?.[1];
+  const lng = profile?.location?.coordinates?.[0];
+
   return (
-    <div style={{ minHeight: "100vh", background: "var(--grey-100, #f4f4f4)", fontFamily: "var(--font-family, sans-serif)" }}>
-      <header style={{ background: "var(--black, #0f0f0f)", color: "white", padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "3px solid var(--yellow, #f5c518)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "24px" }}>🌱</span>
-          <span style={{ fontSize: "20px", fontWeight: 800, color: "white" }}>SaveBite</span>
-          <span style={{ background: "var(--yellow, #f5c518)", color: "var(--black, #0f0f0f)", fontSize: "11px", fontWeight: 800, padding: "2px 8px", borderRadius: "12px", marginLeft: "6px" }}>Delivery Partner</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-          <span style={{ fontSize: "14px", color: "var(--grey-400, #888888)" }}>Welcome, <strong style={{ color: "white" }}>{user?.fullName}</strong></span>
-          <button onClick={handleLogout} style={{ background: "transparent", border: "1.5px solid rgba(255,255,255,0.3)", color: "white", padding: "6px 14px", borderRadius: "8px", cursor: "pointer", fontWeight: 600, fontSize: "13px" }}>
-            Sign Out
-          </button>
-        </div>
-      </header>
-
-      <main style={{ maxWidth: "1000px", margin: "40px auto", padding: "0 24px" }}>
-        <div style={{ background: "white", borderRadius: "16px", padding: "32px", border: "1.5px solid var(--grey-200, #e0e0e0)", boxShadow: "0 4px 16px rgba(0,0,0,0.04)" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-            <div>
-              <h2 style={{ fontSize: "24px", fontWeight: 800, color: "var(--black, #0f0f0f)", marginBottom: "4px" }}>Rider Control Panel</h2>
-              <p style={{ color: "var(--grey-600, #555555)" }}>Milestone 5 complete: Driver vehicle & status registered in MongoDB.</p>
-            </div>
-            <button
-              onClick={() => navigate("/delivery/profile-setup")}
-              style={{
-                background: "var(--yellow-light, #fef9e7)",
-                border: "1.5px solid var(--yellow, #f5c518)",
-                color: "var(--black, #0f0f0f)",
-                fontWeight: 700,
-                fontSize: "13px",
-                padding: "8px 16px",
-                borderRadius: "8px",
-                cursor: "pointer",
-              }}
-            >
-              Update Vehicle
-            </button>
-          </div>
-
-          {statusMsg && (
-            <div style={{ background: "#ecfdf5", border: "1.5px solid #10b981", color: "#065f46", padding: "10px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, marginBottom: "16px" }}>
-              {statusMsg}
-            </div>
-          )}
-
-          {loading ? (
-            <p style={{ color: "var(--grey-600, #555555)" }}>Loading rider profile...</p>
-          ) : profile ? (
-            <div>
-              {/* Availability Banner */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  background: profile.isAvailable ? "#ecfdf5" : "#fef2f2",
-                  border: `2px solid ${profile.isAvailable ? "#10b981" : "#ef4444"}`,
-                  borderRadius: "14px",
-                  padding: "20px 24px",
-                  marginBottom: "24px",
-                }}
-              >
-                <div>
-                  <h3 style={{ fontSize: "18px", fontWeight: 800, color: profile.isAvailable ? "#065f46" : "#991b1b", marginBottom: "4px" }}>
-                    {profile.isAvailable ? "🟢 You are Online & Available" : "🔴 You are Offline"}
-                  </h3>
-                  <p style={{ fontSize: "13px", color: profile.isAvailable ? "#047857" : "#b91c1c" }}>
-                    {profile.isAvailable
-                      ? "Autonomous AI dispatch agent can route nearby surplus food orders to you."
-                      : "Switch online whenever you are ready to accept delivery runs."}
-                  </p>
-                </div>
-                <button
-                  onClick={handleToggleAvailability}
-                  disabled={toggling}
-                  style={{
-                    background: profile.isAvailable ? "var(--black, #0f0f0f)" : "var(--yellow, #f5c518)",
-                    color: profile.isAvailable ? "white" : "var(--black, #0f0f0f)",
-                    border: "none",
-                    padding: "10px 20px",
-                    borderRadius: "10px",
-                    fontWeight: 800,
-                    fontSize: "14px",
-                    cursor: "pointer",
-                  }}
-                >
-                  {toggling
-                    ? "Updating..."
-                    : profile.isAvailable
-                    ? "Go Offline"
-                    : "Go Online"}
-                </button>
-              </div>
-
-              {/* Rider Details Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px" }}>
-                <div style={{ background: "var(--yellow-light, #fef9e7)", border: "1.5px solid var(--yellow, #f5c518)", borderRadius: "12px", padding: "20px" }}>
-                  <h4 style={{ color: "var(--yellow-dark, #d4a900)", fontWeight: 800, marginBottom: "12px" }}>Vehicle Information</h4>
-                  <p style={{ margin: "6px 0", fontSize: "14px" }}><strong>Vehicle Type:</strong> {profile.vehicleType}</p>
-                  <p style={{ margin: "6px 0", fontSize: "14px" }}><strong>Registration / ID:</strong> {profile.vehicleNumber}</p>
-                  <p style={{ margin: "6px 0", fontSize: "14px" }}><strong>Contact Phone:</strong> {profile.phoneNumber}</p>
-                </div>
-
-                <div style={{ background: "var(--grey-100, #f4f4f4)", border: "1.5px solid var(--grey-200, #e0e0e0)", borderRadius: "12px", padding: "20px" }}>
-                  <h4 style={{ color: "var(--black, #0f0f0f)", fontWeight: 800, marginBottom: "12px" }}>GPS Dispatch Base</h4>
-                  <p style={{ margin: "6px 0", fontSize: "14px" }}>
-                    <strong>Latitude:</strong> {profile.location?.coordinates?.[1]}
-                  </p>
-                  <p style={{ margin: "6px 0", fontSize: "14px" }}>
-                    <strong>Longitude:</strong> {profile.location?.coordinates?.[0]}
-                  </p>
-                  <p style={{ margin: "12px 0 0 0", fontSize: "12px", color: "var(--grey-600, #555555)" }}>
-                    Used by the delivery agent to calculate ETA and distance from surplus food pick-up locations.
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div style={{ background: "#fef2f2", padding: "16px", borderRadius: "10px", marginBottom: "20px", color: "#b91c1c" }}>
-              No driver profile found. Click "Update Vehicle" to configure your vehicle and starting location.
-            </div>
-          )}
-
-          <div style={{ background: "var(--grey-100, #f4f4f4)", borderRadius: "12px", padding: "20px", border: "1px solid var(--grey-200, #e0e0e0)" }}>
-            <h4 style={{ color: "var(--black, #0f0f0f)", fontWeight: 700, marginBottom: "6px" }}>Next Up: Milestone 14, 15 & 16</h4>
-            <p style={{ fontSize: "14px", color: "var(--grey-600, #555555)" }}>
-              Incoming AI delivery requests, Accept/Reject actions, and order status lifecycle stepper (Assigned → Accepted → Picked Up → In Transit → Delivered).
+    <DeliveryLayout
+      onAvailabilityChange={(isAvail) =>
+        setProfile((prev) => (prev ? { ...prev, isAvailable: isAvail } : null))
+      }
+      onLocationUpdate={(newLat, newLon) =>
+        setProfile((prev) =>
+          prev
+            ? {
+                ...prev,
+                location: { type: "Point", coordinates: [newLon, newLat] },
+              }
+            : null
+        )
+      }
+    >
+      <div className="rst-dashboard">
+        {/* Page Header */}
+        <div className="rst-page-header">
+          <div>
+            <span className="del-portal-pill">RIDER CONTROL PANEL</span>
+            <h1 className="rst-page-title">Delivery Partner Dashboard</h1>
+            <p className="rst-page-subtitle">
+              Manage live AI delivery assignments, active runs, real-time GPS telemetry, and earnings.
             </p>
           </div>
+
+          <div className="rst-page-actions">
+            <button
+              type="button"
+              className="rst-btn-outline"
+              onClick={loadData}
+              disabled={loading}
+            >
+              🔄 Refresh Runs
+            </button>
+            <Link to="/delivery/profile" className="rst-btn-solid">
+              👤 Driver Profile
+            </Link>
+          </div>
         </div>
-      </main>
-    </div>
+
+        {/* Global Notification Banner */}
+        {statusMsg && (
+          <div
+            className={
+              statusMsg.type === "success" ? "cst-alert-success" : "cst-alert-danger"
+            }
+          >
+            {statusMsg.text}
+          </div>
+        )}
+
+        {/* AVAILABILITY & DISPATCH HERO CARD */}
+        {profile && (
+          <div
+            className={`del-availability-card ${profile.isAvailable ? "online" : "offline"}`}
+          >
+            <div className="del-avail-left">
+              <div className="del-avail-indicator">
+                <span className="del-avail-dot" />
+                <span className="del-avail-tag">
+                  {profile.isAvailable ? "ONLINE & READY FOR DISPATCH" : "CURRENTLY OFFLINE"}
+                </span>
+              </div>
+              <h2 className="del-avail-title">
+                {profile.isAvailable
+                  ? "AI Dispatch Agent is Actively Scanning For Runs"
+                  : "Go Online to Receive Surplus Food Deliveries"}
+              </h2>
+              <p className="del-avail-desc">
+                {profile.isAvailable
+                  ? "When restaurants prepare surplus meals, our LangGraph dispatch algorithm selects you based on proximity and vehicle fitness."
+                  : "Switch to Online mode whenever you are ready to accept pickup requests in your territory."}
+              </p>
+
+              {/* Location Badge */}
+              <div className="del-avail-loc-bar">
+                <span>
+                  📍 <strong>Dispatch Base:</strong> {lat?.toFixed(4) ?? "N/A"}°N,{" "}
+                  {lng?.toFixed(4) ?? "N/A"}°W
+                </span>
+                <button
+                  type="button"
+                  className="del-btn-gps"
+                  onClick={handleUpdateGps}
+                  disabled={detectingGps}
+                >
+                  {detectingGps ? "Calibrating GPS..." : "📍 Update Current GPS"}
+                </button>
+              </div>
+            </div>
+
+            <div className="del-avail-right">
+              <button
+                type="button"
+                className={`del-btn-toggle ${profile.isAvailable ? "to-offline" : "to-online"}`}
+                onClick={handleToggleAvailability}
+                disabled={actionLoading === "toggle"}
+              >
+                {actionLoading === "toggle"
+                  ? "Updating..."
+                  : profile.isAvailable
+                  ? "Switch Offline"
+                  : "⚡ Go Online Now"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* KPI & EARNINGS GRID */}
+        <div className="rst-kpi-grid">
+          <div className="rst-kpi-card">
+            <div className="rst-kpi-header">
+              <span className="rst-kpi-title">Total Earnings</span>
+              <span className="rst-kpi-icon">💰</span>
+            </div>
+            <div className="rst-kpi-value">
+              ${earningsSummary.totalEarnings.toFixed(2)}
+            </div>
+            <p className="rst-kpi-note">Calculated from completed deliveries</p>
+          </div>
+
+          <div className="rst-kpi-card">
+            <div className="rst-kpi-header">
+              <span className="rst-kpi-title">Completed Deliveries</span>
+              <span className="rst-kpi-icon">📦</span>
+            </div>
+            <div className="rst-kpi-value">{earningsSummary.completedCount}</div>
+            <p className="rst-kpi-note">Surplus meals safely rescued</p>
+          </div>
+
+          <div className="rst-kpi-card">
+            <div className="rst-kpi-header">
+              <span className="rst-kpi-title">Distance Traveled</span>
+              <span className="rst-kpi-icon">🛣️</span>
+            </div>
+            <div className="rst-kpi-value">{earningsSummary.totalDistanceKm} km</div>
+            <p className="rst-kpi-note">Transit distance across deliveries</p>
+          </div>
+
+          <div className="rst-kpi-card">
+            <div className="rst-kpi-header">
+              <span className="rst-kpi-title">CO₂ Emissions Saved</span>
+              <span className="rst-kpi-icon">🌱</span>
+            </div>
+            <div className="rst-kpi-value">{earningsSummary.co2SavedKg} kg</div>
+            <p className="rst-kpi-note">~2.5 kg CO₂ prevented per meal</p>
+          </div>
+        </div>
+
+        {/* PENDING DISPATCH REQUESTS (status === "Assigned") */}
+        {pendingRequests.length > 0 && (
+          <div className="del-pending-section">
+            <div className="del-section-header">
+              <div className="del-urgent-badge">
+                ⚡ NEW INCOMING DISPATCH ({pendingRequests.length})
+              </div>
+              <h3>Action Required: Respond to Delivery Assignment</h3>
+            </div>
+
+            <div className="del-pending-grid">
+              {pendingRequests.map((req) => (
+                <div key={req.id} className="del-pending-card">
+                  <div className="del-card-header">
+                    <div className="del-id-group">
+                      <span className="del-req-tag">DISPATCH ASSIGNMENT</span>
+                      <strong className="del-order-id">
+                        Order #{req.orderId.slice(-6)}
+                      </strong>
+                    </div>
+                    <div className="del-payout-badge">
+                      +${req.deliveryFee.toFixed(2)} Payout
+                    </div>
+                  </div>
+
+                  <div className="del-route-specs">
+                    <div className="del-route-item">
+                      <span className="del-spec-label">Pickup Point</span>
+                      <span className="del-spec-val">
+                        🏪 Restaurant Location: [
+                        {req.pickupLocation.coordinates[1].toFixed(4)},{" "}
+                        {req.pickupLocation.coordinates[0].toFixed(4)}]
+                      </span>
+                    </div>
+                    <div className="del-route-divider">
+                      <span>↕ {req.distanceInKilometers} km transit • ~{req.estimatedMinutes} mins</span>
+                    </div>
+                    <div className="del-route-item">
+                      <span className="del-spec-label">Customer Destination</span>
+                      <span className="del-spec-val">
+                        📍 Delivery Location: [
+                        {req.deliveryLocation.coordinates[1].toFixed(4)},{" "}
+                        {req.deliveryLocation.coordinates[0].toFixed(4)}]
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="del-pending-actions">
+                    <button
+                      type="button"
+                      className="del-btn-accept"
+                      onClick={() => handleRespond(req.id, true)}
+                      disabled={actionLoading === req.id}
+                    >
+                      {actionLoading === req.id ? "Processing..." : "✓ Accept Run"}
+                    </button>
+                    <button
+                      type="button"
+                      className="del-btn-decline"
+                      onClick={() => handleRespond(req.id, false)}
+                      disabled={actionLoading === req.id}
+                    >
+                      ✕ Decline / Pass to AI
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ACTIVE IN-FLIGHT DELIVERY (Accepted, PickedUp, InTransit) */}
+        {activeDelivery && (
+          <div className="del-active-section">
+            <div className="del-active-header">
+              <div className="del-active-badge">
+                <span className="del-active-dot" />
+                <span>ACTIVE DELIVERY IN PROGRESS</span>
+              </div>
+              <span className="del-payout-hero">
+                Payout: ${activeDelivery.deliveryFee.toFixed(2)}
+              </span>
+            </div>
+
+            {/* Stepper Progression */}
+            <div className="del-stepper-box">
+              <div className="del-stepper">
+                {/* Step 1: Accepted */}
+                <div
+                  className={`del-step ${
+                    ["Accepted", "PickedUp", "InTransit", "Delivered"].includes(
+                      activeDelivery.status
+                    )
+                      ? "complete"
+                      : "current"
+                  }`}
+                >
+                  <div className="del-step-dot">1</div>
+                  <span className="del-step-label">Accepted</span>
+                </div>
+                <div
+                  className={`del-step-line ${
+                    ["PickedUp", "InTransit", "Delivered"].includes(activeDelivery.status)
+                      ? "complete"
+                      : ""
+                  }`}
+                />
+
+                {/* Step 2: Picked Up */}
+                <div
+                  className={`del-step ${
+                    ["PickedUp", "InTransit", "Delivered"].includes(activeDelivery.status)
+                      ? "complete"
+                      : activeDelivery.status === "Accepted"
+                      ? "current"
+                      : ""
+                  }`}
+                >
+                  <div className="del-step-dot">2</div>
+                  <span className="del-step-label">Portion Picked Up</span>
+                </div>
+                <div
+                  className={`del-step-line ${
+                    ["InTransit", "Delivered"].includes(activeDelivery.status)
+                      ? "complete"
+                      : ""
+                  }`}
+                />
+
+                {/* Step 3: In Transit */}
+                <div
+                  className={`del-step ${
+                    ["InTransit", "Delivered"].includes(activeDelivery.status)
+                      ? "complete"
+                      : activeDelivery.status === "PickedUp"
+                      ? "current"
+                      : ""
+                  }`}
+                >
+                  <div className="del-step-dot">3</div>
+                  <span className="del-step-label">Out for Delivery</span>
+                </div>
+                <div
+                  className={`del-step-line ${
+                    activeDelivery.status === "Delivered" ? "complete" : ""
+                  }`}
+                />
+
+                {/* Step 4: Delivered */}
+                <div
+                  className={`del-step ${
+                    activeDelivery.status === "Delivered" ? "complete" : ""
+                  }`}
+                >
+                  <div className="del-step-dot">4</div>
+                  <span className="del-step-label">Delivered</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Trajectory Details */}
+            <div className="del-active-body">
+              <div className="del-active-col">
+                <span className="co-label">Pickup Kitchen</span>
+                <p className="co-val">
+                  🏪 Coordinates: [
+                  {activeDelivery.pickupLocation.coordinates[1].toFixed(4)},{" "}
+                  {activeDelivery.pickupLocation.coordinates[0].toFixed(4)}]
+                </p>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${activeDelivery.pickupLocation.coordinates[1]},${activeDelivery.pickupLocation.coordinates[0]}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="del-map-link"
+                >
+                  🗺️ Navigate to Kitchen ➔
+                </a>
+              </div>
+
+              <div className="del-active-col">
+                <span className="co-label">Customer Dropoff</span>
+                <p className="co-val">
+                  📍 Coordinates: [
+                  {activeDelivery.deliveryLocation.coordinates[1].toFixed(4)},{" "}
+                  {activeDelivery.deliveryLocation.coordinates[0].toFixed(4)}]
+                </p>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${activeDelivery.deliveryLocation.coordinates[1]},${activeDelivery.deliveryLocation.coordinates[0]}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="del-map-link"
+                >
+                  🗺️ Navigate to Customer ➔
+                </a>
+              </div>
+
+              <div className="del-active-col">
+                <span className="co-label">Transit Metrics</span>
+                <p className="co-val">
+                  {activeDelivery.distanceInKilometers} km total distance
+                </p>
+                <span className="co-sub">ETA: ~{activeDelivery.estimatedMinutes} mins</span>
+              </div>
+            </div>
+
+            {/* Lifecycle Action Footer */}
+            <div className="del-active-footer">
+              <div className="del-active-status-note">
+                {activeDelivery.status === "Accepted" &&
+                  "🚴 Travel to the restaurant and confirm meal receipt."}
+                {activeDelivery.status === "PickedUp" &&
+                  "📦 Meal secured! Click below to notify customer and begin delivery."}
+                {activeDelivery.status === "InTransit" &&
+                  "🚀 En route to customer. Hand over portion to complete run."}
+              </div>
+
+              <div className="del-active-btn-wrap">
+                {activeDelivery.status === "Accepted" && (
+                  <button
+                    type="button"
+                    className="del-btn-step"
+                    onClick={() => handleMarkPickedUp(activeDelivery.id)}
+                    disabled={actionLoading === activeDelivery.id}
+                  >
+                    {actionLoading === activeDelivery.id
+                      ? "Updating..."
+                      : "Confirm Meal Picked Up 📦"}
+                  </button>
+                )}
+
+                {activeDelivery.status === "PickedUp" && (
+                  <button
+                    type="button"
+                    className="del-btn-step"
+                    onClick={() => handleStartTransit(activeDelivery.id)}
+                    disabled={actionLoading === activeDelivery.id}
+                  >
+                    {actionLoading === activeDelivery.id
+                      ? "Updating..."
+                      : "Start Delivery Run 🚀"}
+                  </button>
+                )}
+
+                {activeDelivery.status === "InTransit" && (
+                  <button
+                    type="button"
+                    className="del-btn-complete"
+                    onClick={() => handleCompleteDelivery(activeDelivery.id)}
+                    disabled={actionLoading === activeDelivery.id}
+                  >
+                    {actionLoading === activeDelivery.id
+                      ? "Completing..."
+                      : "Complete Delivery & Collect Payout 🎉"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* DELIVERIES HISTORY SECTION */}
+        <div className="rst-card">
+          <div className="rst-card-header">
+            <div>
+              <h3>Delivery Runs & Activity</h3>
+              <p style={{ margin: "2px 0 0", fontSize: "12px", color: "var(--grey-600)" }}>
+                Audit log of all assigned and completed surplus food runs.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button
+                type="button"
+                className={`rst-btn-tab ${historyTab === "completed" ? "rst-btn-tab--active" : ""}`}
+                onClick={() => setHistoryTab("completed")}
+              >
+                Completed ({completedRequests.length})
+              </button>
+              <button
+                type="button"
+                className={`rst-btn-tab ${historyTab === "all" ? "rst-btn-tab--active" : ""}`}
+                onClick={() => setHistoryTab("all")}
+              >
+                All Runs ({requests.length})
+              </button>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="fd-loading-card">
+              <div className="spinner-border text-warning" role="status" />
+              <p>Loading your delivery history...</p>
+            </div>
+          ) : (historyTab === "completed" ? completedRequests : requests).length === 0 ? (
+            <div className="rst-empty-state">
+              <span style={{ fontSize: "32px", marginBottom: "8px" }}>🛵</span>
+              <p className="rst-empty-text">
+                {historyTab === "completed"
+                  ? "No completed deliveries yet. Accept an incoming dispatch above to start earning!"
+                  : "No delivery requests found on your account."}
+              </p>
+            </div>
+          ) : (
+            <div className="rst-table-wrapper">
+              <table className="rst-table">
+                <thead>
+                  <tr>
+                    <th>Dispatch ID</th>
+                    <th>Order Reference</th>
+                    <th>Date & Time</th>
+                    <th>Distance</th>
+                    <th>Fee Earned</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(historyTab === "completed" ? completedRequests : requests).map(
+                    (req) => (
+                      <tr key={req.id}>
+                        <td>
+                          <span className="rst-code">#{req.id.slice(-6)}</span>
+                        </td>
+                        <td>
+                          <span className="rst-code">Order #{req.orderId.slice(-6)}</span>
+                        </td>
+                        <td>
+                          {new Date(req.requestedAt).toLocaleDateString()} at{" "}
+                          {new Date(req.requestedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
+                        <td>
+                          <strong>{req.distanceInKilometers} km</strong>
+                        </td>
+                        <td>
+                          <strong style={{ color: "#15803d" }}>
+                            +${req.deliveryFee.toFixed(2)}
+                          </strong>
+                        </td>
+                        <td>
+                          <span
+                            className={`rst-status-pill ${
+                              req.status === "Delivered"
+                                ? "rst-status-pill--completed"
+                                : req.status === "Assigned"
+                                ? "rst-status-pill--pending"
+                                : "rst-status-pill--preparing"
+                            }`}
+                          >
+                            {req.status === "Delivered" ? "✓ Delivered" : req.status}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </DeliveryLayout>
   );
 }
 

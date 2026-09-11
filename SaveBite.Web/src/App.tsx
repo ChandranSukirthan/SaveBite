@@ -31,6 +31,7 @@ import AddFoodPage from "./pages/restaurant/AddFoodPage";
 import EditFoodPage from "./pages/restaurant/EditFoodPage";
 import RestaurantOrdersPage from "./pages/restaurant/RestaurantOrdersPage";
 import DeliveryDashboard from "./pages/dashboards/DeliveryDashboard";
+import { DeliveryProfilePage } from "./pages/delivery/DeliveryProfilePage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 
 
@@ -352,6 +353,20 @@ function App() {
               >
                 <ProfileGate>
                   <DeliveryDashboard />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/delivery/profile"
+            element={
+              <RoleProtectedRoute
+                allowedRole="DeliveryPerson"
+                fallbackLogin="/delivery/login"
+              >
+                <ProfileGate>
+                  <DeliveryProfilePage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }
