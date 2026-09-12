@@ -8307,4 +8307,156 @@ body {
   font-size: 9px;
 }
 
+/* ============================================================
+   SIGNALR REAL-TIME NOTIFICATION TOASTS & STATUS
+   ============================================================ */
+.sr-toast-container {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 400px;
+  width: calc(100% - 48px);
+}
+
+.sr-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-left: 4px solid var(--yellow);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  animation: srToastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@keyframes srToastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.sr-toast-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1;
+  padding-top: 2px;
+}
+
+.sr-toast-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sr-toast-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.sr-toast-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--black);
+  line-height: 1.3;
+}
+
+.sr-toast-badge {
+  font-size: 9.5px;
+  font-weight: 800;
+  background: #fef3c7;
+  color: #b45309;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.sr-toast-message {
+  font-size: 12.5px;
+  color: var(--grey-600);
+  line-height: 1.45;
+  word-break: break-word;
+  margin: 0;
+}
+
+.sr-toast-close {
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  color: var(--grey-400);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  border-radius: 4px;
+  transition: color 0.15s;
+}
+
+.sr-toast-close:hover {
+  color: var(--black);
+}
+
+.sr-status-banner {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 99998;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 15, 15, 0.92);
+  color: #ffffff;
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(8px);
+}
+
+.sr-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.sr-status-dot--reconnecting {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+  animation: srPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes srPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0.6;
+  }
+}
+
+
 

@@ -15,6 +15,7 @@ import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { useSignalR } from "../../context/SignalRContext";
 
 const CATEGORIES = [
   "All",
@@ -85,9 +86,83 @@ export function CustomerDashboard() {
     }
   }
 
+  const {
+    joinDeliveryGroup,
+    onOrderStatusUpdated,
+    onDeliveryStatusUpdated,
+    onNotificationReceived,
+  } = useSignalR();
+
   useEffect(() => {
     loadDashboardData();
   }, [radiusKm]);
+
+  // Real-time SignalR listeners for Order and Delivery updates
+  useEffect(() => {
+    if (!orders.length) return;
+    const active = orders.find(
+      (o) =>
+        o.status === "Pending" ||
+        o.status === "Confirmed" ||
+        o.status === "Preparing" ||
+        o.status === "ReadyForPickup" ||
+        o.status === "PickedUp" ||
+        o.status === "OutForDelivery"
+    );
+
+    if (active?.id) {
+      joinDeliveryGroup(active.id);
+    }
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === data.orderId ? { ...o, status: data.status as any } : o
+        )
+      );
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      if (data.status === "Delivered") {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === data.orderId ? { ...o, status: "Delivered" } : o
+          )
+        );
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubDelivery();
+    };
+  }, [orders.length]);
+
+  // Real-time listener for incoming notifications
+  useEffect(() => {
+    const unsubNotif = onNotificationReceived((notif) => {
+      setNotifications((prev) => [
+        {
+          id: notif.id,
+          userId: user?.id || "",
+          title: notif.title,
+          message: notif.message,
+          type: notif.type as any,
+          isRead: false,
+          createdAt: notif.createdAt,
+          orderId: notif.orderId,
+          deliveryRequestId: notif.deliveryRequestId,
+        },
+        ...prev,
+      ]);
+
+      if (notif.orderId) {
+        getMyCustomerOrders().then(setOrders).catch(() => {});
+      }
+    });
+
+    return unsubNotif;
+  }, [user?.id]);
 
   // Find single active in-flight order
   const activeOrder = orders.find(

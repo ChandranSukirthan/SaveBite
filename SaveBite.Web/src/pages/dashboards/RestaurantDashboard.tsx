@@ -9,6 +9,7 @@ import {
 } from "../../services/restaurantService";
 import type { RestaurantProfile } from "../../types/profile";
 import type { Order, FoodItem, AppNotification } from "../../types/restaurant";
+import { useSignalR } from "../../context/SignalRContext";
 
 export function RestaurantDashboard() {
   const [profile, setProfile] = useState<RestaurantProfile | null>(null);
@@ -37,6 +38,43 @@ export function RestaurantDashboard() {
       }
     }
     loadDashboard();
+  }, []);
+
+  const { onNotificationReceived, onOrderStatusUpdated } = useSignalR();
+
+  useEffect(() => {
+    const unsubNotif = onNotificationReceived((notif) => {
+      setNotifications((prev) => [
+        {
+          id: notif.id,
+          userId: "",
+          title: notif.title,
+          message: notif.message,
+          type: notif.type as any,
+          isRead: false,
+          createdAt: notif.createdAt,
+          orderId: notif.orderId,
+          deliveryRequestId: notif.deliveryRequestId,
+        },
+        ...prev,
+      ]);
+
+      // Automatically refresh orders when a new order event arrives
+      getRestaurantOrders().then(setOrders).catch(() => {});
+    });
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === data.orderId ? { ...o, status: data.status as any } : o
+        )
+      );
+    });
+
+    return () => {
+      unsubNotif();
+      unsubOrder();
+    };
   }, []);
 
   // Calculate KPIs

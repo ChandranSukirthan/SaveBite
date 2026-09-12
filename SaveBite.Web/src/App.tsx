@@ -34,12 +34,14 @@ import DeliveryDashboard from "./pages/dashboards/DeliveryDashboard";
 import { DeliveryProfilePage } from "./pages/delivery/DeliveryProfilePage";
 import { DeliveryRequestsPage } from "./pages/delivery/DeliveryRequestsPage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import { SignalRProvider } from "./context/SignalRContext";
 
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <SignalRProvider>
+        <BrowserRouter>
         <Routes>
 
           {/* Public Landing Page */}
@@ -412,6 +414,7 @@ function App() {
 
         </Routes>
       </BrowserRouter>
+      </SignalRProvider>
     </AuthProvider>
   );
 }

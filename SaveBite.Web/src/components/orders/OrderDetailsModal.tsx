@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Order, OrderStatus } from "../../types/restaurant";
 import { OrderStatusStepper } from "./OrderStatusStepper";
 import { AIDeliveryStatusPanel } from "../delivery/AIDeliveryStatusPanel";
+import { useSignalR } from "../../context/SignalRContext";
 
 interface OrderDetailsModalProps {
   order: Order;
@@ -14,14 +15,62 @@ export function OrderDetailsModal({
   onClose,
   onStatusUpdate,
 }: OrderDetailsModalProps) {
+  const [currentOrder, setCurrentOrder] = useState<Order>(order);
   const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    joinDeliveryGroup,
+    onOrderStatusUpdated,
+    onDeliveryStatusUpdated,
+    onDriverAssigned,
+  } = useSignalR();
+
+  useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
+
+  useEffect(() => {
+    if (!order.id) return;
+    joinDeliveryGroup(order.id);
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      if (data.orderId === order.id) {
+        setCurrentOrder((prev) => ({ ...prev, status: data.status as any }));
+      }
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      if (data.orderId === order.id) {
+        setCurrentOrder((prev) => ({
+          ...prev,
+          deliveryRequestId: data.deliveryRequestId,
+        }));
+      }
+    });
+
+    const unsubDriver = onDriverAssigned((data) => {
+      if (data.orderId === order.id) {
+        setCurrentOrder((prev) => ({
+          ...prev,
+          deliveryPersonId: data.deliveryPersonId,
+          deliveryRequestId: data.deliveryRequestId,
+        }));
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubDelivery();
+      unsubDriver();
+    };
+  }, [order.id]);
 
   const handleAction = async (nextStatus: OrderStatus) => {
     try {
       setUpdating(true);
       setError(null);
-      await onStatusUpdate(order.id, nextStatus);
+      await onStatusUpdate(currentOrder.id, nextStatus);
     } catch (err: any) {
       console.error("Order status update error:", err);
       setError(
@@ -44,9 +93,9 @@ export function OrderDetailsModal({
         <div className="rst-modal-header">
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-              <span className="rst-code">Order #{order.id.slice(-8)}</span>
-              <span className={`rst-status-pill rst-status-pill--${order.status.toLowerCase()}`}>
-                {order.status}
+              <span className="rst-code">Order #{currentOrder.id.slice(-8)}</span>
+              <span className={`rst-status-pill rst-status-pill--${currentOrder.status.toLowerCase()}`}>
+                {currentOrder.status}
               </span>
             </div>
             <h2 className="rst-modal-title">Order Details</h2>
@@ -66,20 +115,20 @@ export function OrderDetailsModal({
           {/* STATUS STEPPER */}
           <div style={{ marginBottom: "20px" }}>
             <span className="rst-field-label">ORDER LIFECYCLE</span>
-            <OrderStatusStepper status={order.status} />
+            <OrderStatusStepper status={currentOrder.status} />
           </div>
 
           {/* AI AUTONOMOUS DISPATCH STATUS PANEL */}
-          {(order.status === "ReadyForPickup" ||
-            order.status === "PickedUp" ||
-            order.status === "OutForDelivery") && (
+          {(currentOrder.status === "ReadyForPickup" ||
+            currentOrder.status === "PickedUp" ||
+            currentOrder.status === "OutForDelivery") && (
             <AIDeliveryStatusPanel
               deliveryRequestId={
-                order.deliveryRequestId ||
-                `req-${order.id.slice(-6)}`
+                currentOrder.deliveryRequestId ||
+                `req-${currentOrder.id.slice(-6)}`
               }
-              orderId={order.id}
-              initialStatus={order.status}
+              orderId={currentOrder.id}
+              initialStatus={currentOrder.status}
               compact
             />
           )}
@@ -88,16 +137,16 @@ export function OrderDetailsModal({
           <div className="rst-modal-grid">
             <div className="rst-modal-metric">
               <span className="rst-field-label">TOTAL ORDER AMOUNT</span>
-              <p className="rst-modal-price">${order.totalAmount?.toFixed(2)}</p>
+              <p className="rst-modal-price">${currentOrder.totalAmount?.toFixed(2)}</p>
               <span style={{ fontSize: "11px", color: "var(--grey-600)" }}>
-                Food: ${order.foodTotal?.toFixed(2)} | Delivery: ${order.deliveryFee?.toFixed(2)}
+                Food: ${currentOrder.foodTotal?.toFixed(2)} | Delivery: ${currentOrder.deliveryFee?.toFixed(2)}
               </span>
             </div>
             <div className="rst-modal-metric">
               <span className="rst-field-label">QUANTITY ORDERED</span>
-              <p className="rst-modal-metric-val">{order.quantity} portions</p>
+              <p className="rst-modal-metric-val">{currentOrder.quantity} portions</p>
               <span style={{ fontSize: "11px", color: "var(--grey-600)" }}>
-                Unit Price: ${order.unitPrice?.toFixed(2)}
+                Unit Price: ${currentOrder.unitPrice?.toFixed(2)}
               </span>
             </div>
           </div>
@@ -107,14 +156,14 @@ export function OrderDetailsModal({
             <span className="rst-field-label">DESTINATION DELIVERY ADDRESS</span>
             <div style={{ background: "var(--grey-100)", padding: "12px 14px", borderRadius: "8px" }}>
               <p style={{ margin: 0, fontSize: "14px", fontWeight: 700 }}>
-                📍 {order.deliveryAddress || "Address provided at checkout"}
+                📍 {currentOrder.deliveryAddress || "Address provided at checkout"}
               </p>
             </div>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--grey-400)", marginTop: "16px" }}>
-            <span>Order Placed: {new Date(order.createdAt).toLocaleString()}</span>
-            <span>Food Item ID: {order.foodItemId}</span>
+            <span>Order Placed: {new Date(currentOrder.createdAt).toLocaleString()}</span>
+            <span>Food Item ID: {currentOrder.foodItemId}</span>
           </div>
         </div>
 
@@ -126,7 +175,7 @@ export function OrderDetailsModal({
 
           <div style={{ display: "flex", gap: "10px" }}>
             {/* ACTION 1: FROM PENDING */}
-            {order.status === "Pending" && (
+            {currentOrder.status === "Pending" && (
               <>
                 <button
                   type="button"
@@ -148,7 +197,7 @@ export function OrderDetailsModal({
             )}
 
             {/* ACTION 2: FROM CONFIRMED */}
-            {order.status === "Confirmed" && (
+            {currentOrder.status === "Confirmed" && (
               <>
                 <button
                   type="button"
@@ -170,7 +219,7 @@ export function OrderDetailsModal({
             )}
 
             {/* ACTION 3: FROM PREPARING */}
-            {order.status === "Preparing" && (
+            {currentOrder.status === "Preparing" && (
               <button
                 type="button"
                 className="rst-btn-ai-ready"

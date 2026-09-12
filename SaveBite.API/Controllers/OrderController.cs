@@ -19,10 +19,12 @@ public class OrderController : ControllerBase
     private readonly IMongoCollection<Customer> _customers;
     private readonly IMongoCollection<Restaurant> _restaurants;
     private readonly NotificationService _notificationService;
+    private readonly DeliveryNotificationService _deliveryNotificationService;
 
     public OrderController(
         MongoDbContext mongoDbContext,
-        NotificationService notificationService)
+        NotificationService notificationService,
+        DeliveryNotificationService deliveryNotificationService)
     {
         _orders = mongoDbContext.Database
             .GetCollection<Order>("orders");
@@ -37,6 +39,7 @@ public class OrderController : ControllerBase
             .GetCollection<Restaurant>("restaurants");
 
         _notificationService = notificationService;
+        _deliveryNotificationService = deliveryNotificationService;
     }
 
     [HttpPost]
@@ -251,6 +254,8 @@ public class OrderController : ControllerBase
 
         await _orders.InsertOneAsync(order);
 
+        await _deliveryNotificationService.NotifyOrderStatusAsync(order);
+
         var restaurantOwner =
             await _restaurants
                 .Find(x => x.Id == order.RestaurantId)
@@ -414,6 +419,10 @@ public class OrderController : ControllerBase
         await _foodItems.UpdateOneAsync(
             x => x.Id == order.FoodItemId,
             foodUpdate);
+
+        order.Status = OrderStatus.Cancelled;
+        order.UpdatedAt = DateTime.UtcNow;
+        await _deliveryNotificationService.NotifyOrderStatusAsync(order);
 
         return Ok(new
         {

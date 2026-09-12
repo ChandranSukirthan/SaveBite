@@ -18,11 +18,13 @@ public class RestaurantOrderController : ControllerBase
     private readonly IMongoCollection<Order> _orders;
     private readonly AIServiceClient _aiServiceClient;
     private readonly NotificationService _notificationService;
+    private readonly DeliveryNotificationService _deliveryNotificationService;
 
     public RestaurantOrderController(
         MongoDbContext mongoDbContext,
         AIServiceClient aiServiceClient,
-        NotificationService notificationService)
+        NotificationService notificationService,
+        DeliveryNotificationService deliveryNotificationService)
     {
         _restaurants = mongoDbContext.Database
             .GetCollection<Restaurant>("restaurants");
@@ -32,6 +34,7 @@ public class RestaurantOrderController : ControllerBase
 
         _aiServiceClient = aiServiceClient;
         _notificationService = notificationService;
+        _deliveryNotificationService = deliveryNotificationService;
     }
 
     [HttpGet]
@@ -171,6 +174,10 @@ public class RestaurantOrderController : ControllerBase
                 x.Id == id &&
                 x.RestaurantId == restaurant.Id,
             update);
+
+        order.Status = request.Status;
+        order.UpdatedAt = DateTime.UtcNow;
+        await _deliveryNotificationService.NotifyOrderStatusAsync(order);
 
         if (request.Status ==
             OrderStatus.Confirmed)

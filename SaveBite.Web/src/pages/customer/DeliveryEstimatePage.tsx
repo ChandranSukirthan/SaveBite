@@ -8,6 +8,7 @@ import {
 } from "../../services/customerService";
 import type { Order } from "../../types/restaurant";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { useSignalR } from "../../context/SignalRContext";
 
 export function DeliveryEstimatePage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -46,8 +47,37 @@ export function DeliveryEstimatePage() {
     }
   };
 
+  const {
+    joinDeliveryGroup,
+    onOrderStatusUpdated,
+    onDeliveryStatusUpdated,
+  } = useSignalR();
+
   useEffect(() => {
     fetchEstimate();
+  }, [orderId]);
+
+  // Real-time listener for order and delivery status progression
+  useEffect(() => {
+    if (!orderId) return;
+    joinDeliveryGroup(orderId);
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      if (data.orderId === orderId) {
+        setOrder((prev) => (prev ? { ...prev, status: data.status as any } : prev));
+      }
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      if (data.orderId === orderId) {
+        fetchEstimate();
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubDelivery();
+    };
   }, [orderId]);
 
   const est = estimateData?.estimate;

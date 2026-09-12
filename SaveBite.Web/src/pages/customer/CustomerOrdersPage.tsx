@@ -9,6 +9,7 @@ import {
 import type { Order } from "../../types/restaurant";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { useSignalR } from "../../context/SignalRContext";
 
 type OrderFilterTab = "all" | "active" | "delivered" | "cancelled";
 
@@ -47,9 +48,56 @@ export function CustomerOrdersPage() {
     }
   };
 
+  const {
+    joinDeliveryGroup,
+    onOrderStatusUpdated,
+    onDeliveryStatusUpdated,
+    onNotificationReceived,
+  } = useSignalR();
+
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Real-time SignalR listeners for Order status changes
+  useEffect(() => {
+    if (!orders.length) return;
+    orders.forEach((o) => {
+      if (o.status !== "Delivered" && o.status !== "Cancelled") {
+        joinDeliveryGroup(o.id);
+      }
+    });
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === data.orderId ? { ...o, status: data.status as any } : o
+        )
+      );
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      if (data.status === "Delivered") {
+        setOrders((prev) =>
+          prev.map((o) =>
+            o.id === data.orderId ? { ...o, status: "Delivered" } : o
+          )
+        );
+      }
+    });
+
+    const unsubNotif = onNotificationReceived((notif) => {
+      if (notif.orderId) {
+        fetchOrders();
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubDelivery();
+      unsubNotif();
+    };
+  }, [orders.length]);
 
   const handleCancelOrder = async () => {
     if (!cancellingOrder) return;

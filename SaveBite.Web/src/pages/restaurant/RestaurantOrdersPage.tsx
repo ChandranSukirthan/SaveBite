@@ -6,6 +6,7 @@ import {
 } from "../../services/restaurantService";
 import type { Order, OrderStatus } from "../../types/restaurant";
 import { OrderDetailsModal } from "../../components/orders/OrderDetailsModal";
+import { useSignalR } from "../../context/SignalRContext";
 
 export function RestaurantOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -30,6 +31,39 @@ export function RestaurantOrdersPage() {
   useEffect(() => {
     loadOrders();
   }, []);
+
+  const { joinDeliveryGroup, onOrderStatusUpdated, onNotificationReceived } = useSignalR();
+
+  useEffect(() => {
+    if (!orders.length) return;
+    orders.forEach((o) => {
+      joinDeliveryGroup(o.id);
+    });
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === data.orderId ? { ...o, status: data.status as any } : o
+        )
+      );
+      if (selectedOrder && selectedOrder.id === data.orderId) {
+        setSelectedOrder((prev) =>
+          prev ? { ...prev, status: data.status as any } : null
+        );
+      }
+    });
+
+    const unsubNotif = onNotificationReceived((notif) => {
+      if (notif.orderId || notif.type?.includes("Order")) {
+        loadOrders();
+      }
+    });
+
+    return () => {
+      unsubOrder();
+      unsubNotif();
+    };
+  }, [orders.length]);
 
   const handleQuickStatusUpdate = async (
     orderId: string,
