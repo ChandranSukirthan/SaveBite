@@ -7309,3 +7309,254 @@ body {
 .drc-btn-modal-decline:hover:not(:disabled) {
   background: #b91c1c;
 }
+
+/* ============================================================
+   MILESTONE 16 — DELIVERY LIFECYCLE & STATUS STEPPER
+   ============================================================ */
+
+.dss-stepper-container {
+  background: var(--grey-50);
+  border: 1px solid var(--grey-200);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  width: 100%;
+}
+
+.dss-stepper-compact {
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+}
+
+.dss-stepper {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+.dss-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  flex: 1;
+  z-index: 1;
+}
+
+.dss-step-node {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  transition: all 0.2s ease;
+  position: relative;
+  background: var(--grey-200);
+  color: var(--grey-500);
+}
+
+.dss-stepper-compact .dss-step-node {
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.dss-step--completed .dss-step-node {
+  background: #16a34a;
+  color: var(--white);
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.3);
+}
+
+.dss-step--current .dss-step-node {
+  background: var(--black);
+  color: var(--yellow);
+  border: 2px solid var(--yellow);
+  box-shadow: 0 0 0 4px rgba(245, 197, 24, 0.3);
+  animation: pulse-ring 2s infinite ease-out;
+}
+
+.dss-node-num {
+  display: none;
+}
+
+.dss-step-line {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 100%;
+  height: 3px;
+  background: var(--grey-200);
+  z-index: -1;
+}
+
+.dss-stepper-compact .dss-step-line {
+  top: 14px;
+  height: 2px;
+}
+
+.dss-step-line.dss-line--filled {
+  background: #16a34a;
+}
+
+.dss-step-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 8px;
+  gap: 2px;
+}
+
+.dss-stepper-compact .dss-step-meta {
+  margin-top: 6px;
+}
+
+.dss-step-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--grey-600);
+  white-space: nowrap;
+}
+
+.dss-step--current .dss-step-label {
+  color: var(--black);
+  font-weight: 900;
+}
+
+.dss-step--completed .dss-step-label {
+  color: #166534;
+  font-weight: 800;
+}
+
+.dss-step-desc {
+  font-size: 10px;
+  color: var(--grey-500);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dss-stepper-terminal {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  margin-bottom: 14px;
+}
+
+.dss-stepper-terminal--cancelled {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+}
+
+.dss-terminal-icon {
+  font-size: 20px;
+}
+
+/* Stepper inside card */
+.drc-stepper-wrapper {
+  margin: -4px 0 6px;
+}
+
+/* Lifecycle Buttons for Cards */
+.drc-btn-step-pickup {
+  flex: 1;
+  background: var(--black);
+  color: var(--yellow);
+  border: 1.5px solid var(--black);
+  border-radius: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drc-btn-step-pickup:hover:not(:disabled) {
+  background: var(--yellow);
+  color: var(--black);
+}
+
+.drc-btn-step-transit {
+  flex: 1;
+  background: #2563eb;
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 11px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drc-btn-step-transit:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.drc-btn-step-complete {
+  flex: 1;
+  background: #16a34a;
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+}
+
+.drc-btn-step-complete:hover:not(:disabled) {
+  background: #15803d;
+  transform: translateY(-1px);
+}
+
+.drc-delivered-badge-footer {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #166534;
+}
+
+.del-active-node-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--black);
+  margin-bottom: 2px;
+}
+
+@keyframes pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 rgba(245, 197, 24, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(245, 197, 24, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(245, 197, 24, 0);
+  }
+}
+

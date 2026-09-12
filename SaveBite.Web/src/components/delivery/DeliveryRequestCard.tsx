@@ -1,17 +1,26 @@
 import type { DeliveryRequestItem } from "../../types/delivery";
+import { DeliveryStatusStepper } from "./DeliveryStatusStepper";
 
 interface DeliveryRequestCardProps {
   request: DeliveryRequestItem;
   onAccept?: (request: DeliveryRequestItem) => void;
   onReject?: (request: DeliveryRequestItem) => void;
+  onMarkPickedUp?: (request: DeliveryRequestItem) => void;
+  onStartTransit?: (request: DeliveryRequestItem) => void;
+  onCompleteDelivery?: (request: DeliveryRequestItem) => void;
   actionLoading?: boolean;
+  showStepper?: boolean;
 }
 
 export function DeliveryRequestCard({
   request,
   onAccept,
   onReject,
+  onMarkPickedUp,
+  onStartTransit,
+  onCompleteDelivery,
   actionLoading = false,
+  showStepper = true,
 }: DeliveryRequestCardProps) {
   const pickupLat = request.pickupLocation.coordinates[1];
   const pickupLng = request.pickupLocation.coordinates[0];
@@ -49,6 +58,13 @@ export function DeliveryRequestCard({
           <span className="drc-payout-val">+${request.deliveryFee.toFixed(2)}</span>
         </div>
       </div>
+
+      {/* 5-Stage Status Stepper */}
+      {showStepper && (
+        <div className="drc-stepper-wrapper">
+          <DeliveryStatusStepper status={request.status} compact />
+        </div>
+      )}
 
       {/* Trajectory Locations Grid */}
       <div className="drc-trajectory-grid">
@@ -127,7 +143,7 @@ export function DeliveryRequestCard({
           <span className="drc-metric-val">{request.distanceInKilometers} km</span>
         </div>
         <div className="drc-metric-item">
-          <span className="drc-metric-label">Estimated Delivery Time</span>
+          <span className="drc-metric-label">Estimated Duration</span>
           <span className="drc-metric-val">~{request.estimatedMinutes} mins</span>
         </div>
         <div className="drc-metric-item">
@@ -138,7 +154,8 @@ export function DeliveryRequestCard({
         </div>
       </div>
 
-      {/* Action Buttons for Pending Requests */}
+      {/* Action Buttons for Lifecycle States */}
+      {/* 1. Assigned: Accept or Decline */}
       {isAssigned && onAccept && onReject && (
         <div className="drc-actions-footer">
           <button
@@ -157,6 +174,57 @@ export function DeliveryRequestCard({
           >
             ✕ Decline
           </button>
+        </div>
+      )}
+
+      {/* 2. Accepted: Mark Picked Up */}
+      {request.status === "Accepted" && onMarkPickedUp && (
+        <div className="drc-actions-footer">
+          <button
+            type="button"
+            className="drc-btn-step-pickup"
+            onClick={() => onMarkPickedUp(request)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? "Updating Status..." : "Confirm Meal Picked Up 📦"}
+          </button>
+        </div>
+      )}
+
+      {/* 3. Picked Up: Start Transit */}
+      {request.status === "PickedUp" && onStartTransit && (
+        <div className="drc-actions-footer">
+          <button
+            type="button"
+            className="drc-btn-step-transit"
+            onClick={() => onStartTransit(request)}
+            disabled={actionLoading}
+          >
+            {actionLoading ? "Starting Transit..." : "Start Delivery Run 🚀"}
+          </button>
+        </div>
+      )}
+
+      {/* 4. In Transit: Complete Delivery */}
+      {request.status === "InTransit" && onCompleteDelivery && (
+        <div className="drc-actions-footer">
+          <button
+            type="button"
+            className="drc-btn-step-complete"
+            onClick={() => onCompleteDelivery(request)}
+            disabled={actionLoading}
+          >
+            {actionLoading
+              ? "Completing Delivery..."
+              : "Complete Delivery & Collect Payout 🎉"}
+          </button>
+        </div>
+      )}
+
+      {/* 5. Delivered: Success Message */}
+      {isDelivered && (
+        <div className="drc-delivered-badge-footer">
+          <span>✓ Meal Safely Delivered • Payout of ${request.deliveryFee.toFixed(2)} Credited</span>
         </div>
       )}
     </div>

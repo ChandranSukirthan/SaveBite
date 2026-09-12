@@ -14,6 +14,7 @@ import {
 import type { DeliveryRequestItem } from "../../types/delivery";
 import type { DeliveryPersonProfile } from "../../types/profile";
 import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCard";
+import { DeliveryStatusStepper } from "../../components/delivery/DeliveryStatusStepper";
 import { AcceptDeliveryModal } from "../../components/delivery/AcceptDeliveryModal";
 import { RejectDeliveryModal } from "../../components/delivery/RejectDeliveryModal";
 
@@ -453,91 +454,27 @@ export function DeliveryDashboard() {
               </span>
             </div>
 
-            {/* Stepper Progression */}
+            {/* 5-Stage Stepper Progression */}
             <div className="del-stepper-box">
-              <div className="del-stepper">
-                {/* Step 1: Accepted */}
-                <div
-                  className={`del-step ${
-                    ["Accepted", "PickedUp", "InTransit", "Delivered"].includes(
-                      activeDelivery.status
-                    )
-                      ? "complete"
-                      : "current"
-                  }`}
-                >
-                  <div className="del-step-dot">1</div>
-                  <span className="del-step-label">Accepted</span>
-                </div>
-                <div
-                  className={`del-step-line ${
-                    ["PickedUp", "InTransit", "Delivered"].includes(activeDelivery.status)
-                      ? "complete"
-                      : ""
-                  }`}
-                />
-
-                {/* Step 2: Picked Up */}
-                <div
-                  className={`del-step ${
-                    ["PickedUp", "InTransit", "Delivered"].includes(activeDelivery.status)
-                      ? "complete"
-                      : activeDelivery.status === "Accepted"
-                      ? "current"
-                      : ""
-                  }`}
-                >
-                  <div className="del-step-dot">2</div>
-                  <span className="del-step-label">Portion Picked Up</span>
-                </div>
-                <div
-                  className={`del-step-line ${
-                    ["InTransit", "Delivered"].includes(activeDelivery.status)
-                      ? "complete"
-                      : ""
-                  }`}
-                />
-
-                {/* Step 3: In Transit */}
-                <div
-                  className={`del-step ${
-                    ["InTransit", "Delivered"].includes(activeDelivery.status)
-                      ? "complete"
-                      : activeDelivery.status === "PickedUp"
-                      ? "current"
-                      : ""
-                  }`}
-                >
-                  <div className="del-step-dot">3</div>
-                  <span className="del-step-label">Out for Delivery</span>
-                </div>
-                <div
-                  className={`del-step-line ${
-                    activeDelivery.status === "Delivered" ? "complete" : ""
-                  }`}
-                />
-
-                {/* Step 4: Delivered */}
-                <div
-                  className={`del-step ${
-                    activeDelivery.status === "Delivered" ? "complete" : ""
-                  }`}
-                >
-                  <div className="del-step-dot">4</div>
-                  <span className="del-step-label">Delivered</span>
-                </div>
-              </div>
+              <DeliveryStatusStepper status={activeDelivery.status} />
             </div>
 
             {/* Trajectory Details */}
             <div className="del-active-body">
               <div className="del-active-col">
                 <span className="co-label">Pickup Kitchen</span>
+                <strong className="del-active-node-title">
+                  {activeDelivery.restaurant?.restaurantName || "Partner Restaurant"}
+                </strong>
                 <p className="co-val">
-                  🏪 Coordinates: [
-                  {activeDelivery.pickupLocation.coordinates[1].toFixed(4)},{" "}
-                  {activeDelivery.pickupLocation.coordinates[0].toFixed(4)}]
+                  {activeDelivery.restaurant?.address ||
+                    `Coordinates: [${activeDelivery.pickupLocation.coordinates[1].toFixed(4)}, ${activeDelivery.pickupLocation.coordinates[0].toFixed(4)}]`}
                 </p>
+                {activeDelivery.restaurant?.phoneNumber && (
+                  <span className="del-node-phone">
+                    📞 {activeDelivery.restaurant.phoneNumber}
+                  </span>
+                )}
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&destination=${activeDelivery.pickupLocation.coordinates[1]},${activeDelivery.pickupLocation.coordinates[0]}`}
                   target="_blank"
@@ -550,6 +487,9 @@ export function DeliveryDashboard() {
 
               <div className="del-active-col">
                 <span className="co-label">Customer Dropoff</span>
+                <strong className="del-active-node-title">
+                  {activeDelivery.deliveryAddress || "Customer Delivery Destination"}
+                </strong>
                 <p className="co-val">
                   📍 Coordinates: [
                   {activeDelivery.deliveryLocation.coordinates[1].toFixed(4)},{" "}
@@ -571,6 +511,9 @@ export function DeliveryDashboard() {
                   {activeDelivery.distanceInKilometers} km total distance
                 </p>
                 <span className="co-sub">ETA: ~{activeDelivery.estimatedMinutes} mins</span>
+                <span className="del-co2-metric" style={{ color: "#15803d", fontSize: "11px", fontWeight: 700, marginTop: "4px" }}>
+                  🌱 ~2.5 kg CO₂ Saved
+                </span>
               </div>
             </div>
 

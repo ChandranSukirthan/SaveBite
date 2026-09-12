@@ -4,6 +4,9 @@ import { DeliveryLayout } from "../../components/layout/DeliveryLayout";
 import {
   getMyDeliveryRequests,
   respondToDelivery,
+  markDeliveryPickedUp,
+  startDelivery,
+  completeDelivery,
 } from "../../services/deliveryService";
 import type { DeliveryRequestItem } from "../../types/delivery";
 import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCard";
@@ -15,6 +18,7 @@ type TabFilter = "pending" | "active" | "completed" | "all";
 export function DeliveryRequestsPage() {
   const [requests, setRequests] = useState<DeliveryRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabFilter>("pending");
   const [statusMsg, setStatusMsg] = useState<{
     type: "success" | "error";
@@ -91,6 +95,61 @@ export function DeliveryRequestsPage() {
       });
     } finally {
       setModalLoading(false);
+    }
+  };
+
+  const handleMarkPickedUp = async (req: DeliveryRequestItem) => {
+    setActionLoading(req.id);
+    try {
+      const res = await markDeliveryPickedUp(req.id);
+      setStatusMsg({ type: "success", text: res.message });
+      await loadRequests();
+      setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to update pickup status.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleStartTransit = async (req: DeliveryRequestItem) => {
+    setActionLoading(req.id);
+    try {
+      const res = await startDelivery(req.id);
+      setStatusMsg({ type: "success", text: res.message });
+      await loadRequests();
+      setTimeout(() => setStatusMsg(null), 4000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to start delivery transit.",
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleCompleteDelivery = async (req: DeliveryRequestItem) => {
+    setActionLoading(req.id);
+    try {
+      const res = await completeDelivery(req.id);
+      setStatusMsg({
+        type: "success",
+        text: `🎉 ${res.message} Delivery payout added to your balance!`,
+      });
+      await loadRequests();
+      setActiveTab("completed");
+      setTimeout(() => setStatusMsg(null), 5000);
+    } catch (err: any) {
+      setStatusMsg({
+        type: "error",
+        text: err.response?.data?.message || "Failed to complete delivery.",
+      });
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -230,6 +289,10 @@ export function DeliveryRequestsPage() {
                 request={req}
                 onAccept={(r) => setAcceptingRequest(r)}
                 onReject={(r) => setRejectingRequest(r)}
+                onMarkPickedUp={handleMarkPickedUp}
+                onStartTransit={handleStartTransit}
+                onCompleteDelivery={handleCompleteDelivery}
+                actionLoading={actionLoading === req.id}
               />
             ))}
           </div>
