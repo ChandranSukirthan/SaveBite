@@ -7,6 +7,7 @@ import {
   type DeliveryEstimateResponse,
 } from "../../services/customerService";
 import type { Order } from "../../types/restaurant";
+import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
 
 export function DeliveryEstimatePage() {
   const { orderId } = useParams<{ orderId: string }>();
@@ -276,25 +277,16 @@ export function DeliveryEstimatePage() {
                 </div>
               </div>
 
-              {/* AI Courier Dispatch Status */}
-              <div className="de-dispatch-card">
-                <div className="de-dispatch-header">
-                  <span className="de-dispatch-dot" />
-                  <h4>AI Courier Dispatch</h4>
-                </div>
-                <p className="de-dispatch-desc">
-                  Our autonomous LangGraph Dispatch Agent continuously tracks active couriers within your delivery zone.
-                </p>
-                <div className="de-dispatch-status-box">
-                  <span className="de-status-label">CURRENT ORDER STATE</span>
-                  <span className="de-status-value">
-                    {order?.status || "Pending Kitchen Acceptance"}
-                  </span>
-                </div>
-                <p className="de-dispatch-hint">
-                  ⚡ Courier assignment triggers automatically as soon as the kitchen begins packing your surplus meal!
-                </p>
-              </div>
+              {/* AI Autonomous Dispatch Panel */}
+              <AIDeliveryStatusPanel
+                deliveryRequestId={
+                  order?.deliveryRequestId ||
+                  `req-${orderId?.slice(-6) || "active"}`
+                }
+                orderId={orderId}
+                initialStatus={order?.status || "Searching"}
+                compact={false}
+              />
 
               {/* Quick Actions */}
               <div className="de-actions-card">

@@ -14,6 +14,7 @@ import type { Order, AppNotification } from "../../types/restaurant";
 import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
+import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
 
 const CATEGORIES = [
   "All",
@@ -262,21 +263,18 @@ export function CustomerDashboard() {
               <OrderStatusStepper status={activeOrder.status} />
             </div>
 
-            {/* AI DISPATCH BADGE IF READY OR OUT FOR DELIVERY */}
+            {/* AI AUTONOMOUS DISPATCH STATUS PANEL */}
             {(activeOrder.status === "ReadyForPickup" ||
               activeOrder.status === "PickedUp" ||
               activeOrder.status === "OutForDelivery") && (
-              <div className="rst-ai-active-box" style={{ marginTop: "14px" }}>
-                <div className="rst-ai-dot" />
-                <div>
-                  <strong style={{ fontSize: "13px", color: "#7e22ce" }}>
-                    LangGraph Autonomous Delivery Active
-                  </strong>
-                  <p style={{ margin: 0, fontSize: "12px", color: "var(--grey-600)" }}>
-                    Courier has been routed to the restaurant for rapid eco-friendly pick-up and delivery.
-                  </p>
-                </div>
-              </div>
+              <AIDeliveryStatusPanel
+                deliveryRequestId={
+                  activeOrder.deliveryRequestId ||
+                  `req-${activeOrder.id.slice(-6)}`
+                }
+                orderId={activeOrder.id}
+                initialStatus={activeOrder.status}
+              />
             )}
           </div>
         )}

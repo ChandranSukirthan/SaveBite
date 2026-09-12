@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { Order, OrderStatus } from "../../types/restaurant";
 import { OrderStatusStepper } from "./OrderStatusStepper";
+import { AIDeliveryStatusPanel } from "../delivery/AIDeliveryStatusPanel";
 
 interface OrderDetailsModalProps {
   order: Order;
@@ -68,21 +69,19 @@ export function OrderDetailsModal({
             <OrderStatusStepper status={order.status} />
           </div>
 
-          {/* AI DISPATCH BANNER IF READY */}
+          {/* AI AUTONOMOUS DISPATCH STATUS PANEL */}
           {(order.status === "ReadyForPickup" ||
             order.status === "PickedUp" ||
             order.status === "OutForDelivery") && (
-            <div className="rst-ai-active-box">
-              <div className="rst-ai-dot" />
-              <div>
-                <strong style={{ fontSize: "13px", color: "#7e22ce" }}>
-                  Autonomous LangGraph AI Delivery Active
-                </strong>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--grey-600)" }}>
-                  Delivery request generated ({order.deliveryRequestId ? `#${order.deliveryRequestId.slice(-8)}` : "Pending ID"}). Couriers are being routed via spatial 2dsphere indexing.
-                </p>
-              </div>
-            </div>
+            <AIDeliveryStatusPanel
+              deliveryRequestId={
+                order.deliveryRequestId ||
+                `req-${order.id.slice(-6)}`
+              }
+              orderId={order.id}
+              initialStatus={order.status}
+              compact
+            />
           )}
 
           {/* FINANCIALS & ORDER SUMMARY */}

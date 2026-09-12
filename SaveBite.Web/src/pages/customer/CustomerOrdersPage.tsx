@@ -8,6 +8,7 @@ import {
 } from "../../services/customerService";
 import type { Order } from "../../types/restaurant";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
+import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
 
 type OrderFilterTab = "all" | "active" | "delivered" | "cancelled";
 
@@ -31,6 +32,7 @@ export function CustomerOrdersPage() {
   const [estimateOrder, setEstimateOrder] = useState<Order | null>(null);
   const [estimateData, setEstimateData] = useState<any | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const [expandedAIOrderId, setExpandedAIOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -312,7 +314,7 @@ export function CustomerOrdersPage() {
 
                 {/* Order Footer Actions */}
                 <div className="co-order-footer">
-                  <div className="co-footer-left" style={{ display: "flex", gap: "8px" }}>
+                  <div className="co-footer-left" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                     <button
                       type="button"
                       className="co-btn-estimate"
@@ -327,6 +329,28 @@ export function CustomerOrdersPage() {
                     >
                       📊 Full Fare Breakdown ➔
                     </Link>
+                    <button
+                      type="button"
+                      className="co-btn-estimate"
+                      style={{
+                        background:
+                          expandedAIOrderId === order.id
+                            ? "var(--yellow)"
+                            : undefined,
+                        color:
+                          expandedAIOrderId === order.id
+                            ? "var(--black)"
+                            : undefined,
+                        fontWeight: 800,
+                      }}
+                      onClick={() =>
+                        setExpandedAIOrderId(
+                          expandedAIOrderId === order.id ? null : order.id
+                        )
+                      }
+                    >
+                      🤖 {expandedAIOrderId === order.id ? "Hide AI Dispatch" : "AI Dispatch"}
+                    </button>
                   </div>
 
                   <div className="co-footer-right">
@@ -347,6 +371,20 @@ export function CustomerOrdersPage() {
                     )}
                   </div>
                 </div>
+
+                {/* EXPANDABLE AI DISPATCH PANEL */}
+                {expandedAIOrderId === order.id && (
+                  <div style={{ padding: "0 16px 16px" }}>
+                    <AIDeliveryStatusPanel
+                      deliveryRequestId={
+                        order.deliveryRequestId || `req-${order.id.slice(-6)}`
+                      }
+                      orderId={order.id}
+                      initialStatus={order.status}
+                      compact
+                    />
+                  </div>
+                )}
               </div>
             ))}
           </div>
