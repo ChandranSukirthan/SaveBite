@@ -48,6 +48,62 @@ export interface NotificationReceivedEvent {
   createdAt: string;
 }
 
+export interface RouteUpdatedEvent {
+  orderId: string;
+  deliveryRequestId: string;
+  routeVersion: number;
+  selectedRoute: {
+    routeId: string;
+    distanceInKilometers: number;
+    estimatedMinutes: number;
+    trafficCondition: string;
+    trafficDelayMinutes: number;
+    polyline: string;
+    waypoints?: Array<{ latitude: number; longitude: number; stepDescription?: string }>;
+    reason?: string;
+    score?: number;
+  };
+  alternativeRoutes?: Array<{
+    routeId: string;
+    name: string;
+    distanceInKilometers: number;
+    estimatedMinutes: number;
+    trafficCondition: string;
+    trafficDelayMinutes: number;
+    polyline: string;
+    waypoints?: Array<{ latitude: number; longitude: number }>;
+  }>;
+  updatedAt?: string;
+}
+
+export interface ETAUpdatedEvent {
+  orderId: string;
+  estimatedMinutes: number;
+  distanceInKilometers: number;
+  updatedAt?: string;
+}
+
+export interface TrafficUpdatedEvent {
+  orderId: string;
+  trafficCondition: string;
+  delayMinutes: number;
+  updatedAt?: string;
+}
+
+export interface RouteRecalculationStartedEvent {
+  orderId: string;
+  reason: string;
+  timestamp: string;
+}
+
+export interface RouteRecalculationCompletedEvent {
+  orderId: string;
+  selectedRouteId: string;
+  newEta: number;
+  reason: string;
+  timestamp: string;
+}
+
 export type ConnectionState =
   | "Disconnected"
   | "Connecting"
@@ -65,6 +121,11 @@ class SignalRService {
   private driverAssignedListeners: Set<(data: DriverAssignedEvent) => void> = new Set();
   private driverLocationListeners: Set<(data: DriverLocationUpdatedEvent) => void> = new Set();
   private notificationListeners: Set<(data: NotificationReceivedEvent) => void> = new Set();
+  private routeUpdatedListeners: Set<(data: RouteUpdatedEvent) => void> = new Set();
+  private etaUpdatedListeners: Set<(data: ETAUpdatedEvent) => void> = new Set();
+  private trafficUpdatedListeners: Set<(data: TrafficUpdatedEvent) => void> = new Set();
+  private recalcStartedListeners: Set<(data: RouteRecalculationStartedEvent) => void> = new Set();
+  private recalcCompletedListeners: Set<(data: RouteRecalculationCompletedEvent) => void> = new Set();
 
   private getHubUrl(): string {
     const apiBase =
@@ -166,6 +227,56 @@ class SignalRService {
           cb(data);
         } catch (e) {
           console.error("Error in NotificationReceived listener:", e);
+        }
+      });
+    });
+
+    conn.on("RouteUpdated", (data: RouteUpdatedEvent) => {
+      this.routeUpdatedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in RouteUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("ETAUpdated", (data: ETAUpdatedEvent) => {
+      this.etaUpdatedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in ETAUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("TrafficUpdated", (data: TrafficUpdatedEvent) => {
+      this.trafficUpdatedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in TrafficUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("RouteRecalculationStarted", (data: RouteRecalculationStartedEvent) => {
+      this.recalcStartedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in RouteRecalculationStarted listener:", e);
+        }
+      });
+    });
+
+    conn.on("RouteRecalculationCompleted", (data: RouteRecalculationCompletedEvent) => {
+      this.recalcCompletedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in RouteRecalculationCompleted listener:", e);
         }
       });
     });
@@ -355,6 +466,51 @@ class SignalRService {
     this.notificationListeners.add(callback);
     return () => {
       this.notificationListeners.delete(callback);
+    };
+  }
+
+  public onRouteUpdated(
+    callback: (data: RouteUpdatedEvent) => void
+  ): () => void {
+    this.routeUpdatedListeners.add(callback);
+    return () => {
+      this.routeUpdatedListeners.delete(callback);
+    };
+  }
+
+  public onETAUpdated(
+    callback: (data: ETAUpdatedEvent) => void
+  ): () => void {
+    this.etaUpdatedListeners.add(callback);
+    return () => {
+      this.etaUpdatedListeners.delete(callback);
+    };
+  }
+
+  public onTrafficUpdated(
+    callback: (data: TrafficUpdatedEvent) => void
+  ): () => void {
+    this.trafficUpdatedListeners.add(callback);
+    return () => {
+      this.trafficUpdatedListeners.delete(callback);
+    };
+  }
+
+  public onRouteRecalculationStarted(
+    callback: (data: RouteRecalculationStartedEvent) => void
+  ): () => void {
+    this.recalcStartedListeners.add(callback);
+    return () => {
+      this.recalcStartedListeners.delete(callback);
+    };
+  }
+
+  public onRouteRecalculationCompleted(
+    callback: (data: RouteRecalculationCompletedEvent) => void
+  ): () => void {
+    this.recalcCompletedListeners.add(callback);
+    return () => {
+      this.recalcCompletedListeners.delete(callback);
     };
   }
 }

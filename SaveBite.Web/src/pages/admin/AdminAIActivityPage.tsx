@@ -30,8 +30,8 @@ export interface TimelineNode {
 }
 
 export function AdminAIActivityPage() {
-  // Agent view toggle: "food" | "delivery"
-  const [activeAgent, setActiveAgent] = useState<"food" | "delivery">("food");
+  // Agent view toggle: "food" | "delivery" | "route"
+  const [activeAgent, setActiveAgent] = useState<"food" | "delivery" | "route">("food");
   
   // Delivery agent branch: "accepted" (happy path) vs "rejected" (self-healing retry)
   const [deliveryBranch, setDeliveryBranch] = useState<"accepted" | "rejected">("accepted");
@@ -472,10 +472,265 @@ SELECTED: drv_01 with 95% suitability score.`,
     },
   ];
 
+  // Route Optimization Agent Nodes (10 Graph Nodes)
+  const routeNodes: TimelineNode[] = [
+    {
+      id: "route-step-1",
+      stepNumber: 1,
+      title: "Observe Delivery Request",
+      subtitle: "LangGraph START node initialization",
+      technology: "LangGraph",
+      techBadgeClass: "adm-tech-langgraph",
+      techDetail: "StateGraph START -> RouteAgentState",
+      actionSummary: "Agent observes order pickup location (Kitchen) and destination delivery coordinates.",
+      inputPreview: "DeliveryRequestId: 'del_req_482' · Origin: [40.7128, -74.0060] · Destination: [40.7484, -73.9857]",
+      outputPreview: "RouteAgentState initialized with coordinates and order metadata",
+      latencyMs: 14,
+      tokensEstimated: 75,
+      status: "idle",
+      langgraphState: {
+        delivery_request_id: "del_req_482",
+        order_id: "ord_1028",
+        pickup_latitude: 40.7128,
+        pickup_longitude: -74.0060,
+        destination_latitude: 40.7484,
+        destination_longitude: -73.9857,
+      },
+    },
+    {
+      id: "route-step-2",
+      stepNumber: 2,
+      title: "Get Driver GPS Location",
+      subtitle: "ToolNode execution via get_driver_location",
+      technology: "LangGraph Tool",
+      techBadgeClass: "adm-tech-tool",
+      techDetail: "StructuredTool -> C# REST API / MongoDB",
+      actionSummary: "Retrieves courier's latest verified GPS position and heading vector.",
+      inputPreview: "delivery_request_id = 'del_req_482'",
+      outputPreview: "Driver coordinates: [40.7135, -74.0050] (Bicycle)",
+      latencyMs: 65,
+      tokensEstimated: 80,
+      status: "idle",
+      langgraphState: {
+        driver_latitude: 40.7135,
+        driver_longitude: -74.0050,
+      },
+      toolDetails: {
+        toolName: "get_driver_location",
+        arguments: { delivery_request_id: "del_req_482" },
+        result: { success: true, latitude: 40.7135, longitude: -74.0050, isSimulated: false },
+      },
+    },
+    {
+      id: "route-step-3",
+      stepNumber: 3,
+      title: "Retrieve Candidate Routes",
+      subtitle: "ToolNode execution via get_route_options",
+      technology: "LangGraph Tool",
+      techBadgeClass: "adm-tech-tool",
+      techDetail: "IRoutingProvider -> 3 Multi-Path Candidates",
+      actionSummary: "Queries abstracted routing provider for verified route alternatives (Route A, Route B, Route C).",
+      inputPreview: "Origin: [40.7135, -74.0050] · Destination: [40.7484, -73.9857]",
+      outputPreview: "3 verified routes: Route A (3.1km), Route B (4.0km), Route C (5.2km)",
+      latencyMs: 210,
+      tokensEstimated: 190,
+      status: "idle",
+      langgraphState: {
+        candidate_count: 3,
+        candidates: ["route-A", "route-B", "route-C"],
+      },
+      toolDetails: {
+        toolName: "get_route_options",
+        arguments: { origin_latitude: 40.7135, origin_longitude: -74.0050, destination_latitude: 40.7484, destination_longitude: -73.9857 },
+        result: {
+          routes: [
+            { routeId: "route-A", name: "Central Avenue Direct", distanceInKilometers: 3.1, normalDurationMinutes: 10, trafficDurationMinutes: 22 },
+            { routeId: "route-B", name: "Westside Arterial Bypass", distanceInKilometers: 4.0, normalDurationMinutes: 13, trafficDurationMinutes: 14 },
+            { routeId: "route-C", name: "East River Perimeter Loop", distanceInKilometers: 5.2, normalDurationMinutes: 16, trafficDurationMinutes: 16 },
+          ],
+        },
+      },
+    },
+    {
+      id: "route-step-4",
+      stepNumber: 4,
+      title: "Analyze Current Traffic",
+      subtitle: "ToolNode execution via get_current_traffic",
+      technology: "LangGraph Tool",
+      techBadgeClass: "adm-tech-tool",
+      techDetail: "Traffic Flow API -> Congestion metrics",
+      actionSummary: "Calculates congestion delay factors across corridor segments.",
+      inputPreview: "Origin & Destination bounding box",
+      outputPreview: "Traffic Level: Heavy · Bottleneck: Central Metro Crossing (+12m delay on Route A)",
+      latencyMs: 120,
+      tokensEstimated: 110,
+      status: "idle",
+      langgraphState: {
+        traffic_information: {
+          overallTrafficLevel: "Heavy",
+          congestionFactor: 1.6,
+          averageDelayMinutes: 8.5,
+          bottleneckArea: "Central Metro Crossing",
+        },
+      },
+      toolDetails: {
+        toolName: "get_current_traffic",
+        arguments: { origin_latitude: 40.7135, destination_latitude: 40.7484 },
+        result: { overallTrafficLevel: "Heavy", congestionFactor: 1.6, bottleneckArea: "Central Metro Crossing" },
+      },
+    },
+    {
+      id: "route-step-5",
+      stepNumber: 5,
+      title: "Load Historical Route Data",
+      subtitle: "ToolNode execution via get_historical_route_data",
+      technology: "LangGraph Tool",
+      techBadgeClass: "adm-tech-tool",
+      techDetail: "MongoDB routeHistory aggregation pipeline",
+      actionSummary: "Aggregates past delivery durations, delay variance, and success rate for each candidate.",
+      inputPreview: "Collection: routeHistory",
+      outputPreview: "Route A: 88% reliability, +8m delay | Route B: 97% reliability, +1.4m delay",
+      latencyMs: 145,
+      tokensEstimated: 140,
+      status: "idle",
+      langgraphState: {
+        historical_routes: [
+          { routeId: "route-A", historicalAverageMinutes: 18.5, successfulDeliveryRate: 0.88 },
+          { routeId: "route-B", historicalAverageMinutes: 14.2, successfulDeliveryRate: 0.97 },
+          { routeId: "route-C", historicalAverageMinutes: 16.8, successfulDeliveryRate: 0.95 },
+        ],
+      },
+      toolDetails: {
+        toolName: "get_historical_route_data",
+        arguments: { origin_latitude: 40.7135, destination_latitude: 40.7484 },
+        result: {
+          historicalRoutes: [
+            { routeId: "route-A", historicalAverageMinutes: 18.5, historicalDelayMinutes: 8.2, successfulDeliveryRate: 0.88 },
+            { routeId: "route-B", historicalAverageMinutes: 14.2, historicalDelayMinutes: 1.4, successfulDeliveryRate: 0.97 },
+          ],
+        },
+      },
+    },
+    {
+      id: "route-step-6",
+      stepNumber: 6,
+      title: "Deterministic Route Scoring",
+      subtitle: "Multi-factor objective scoring calculation",
+      technology: "LangGraph",
+      techBadgeClass: "adm-tech-langgraph",
+      techDetail: "Deterministic formula: Time(40%) + Traffic(25%) + Reliability(25%) + Distance(10%)",
+      actionSummary: "Calculates numeric score for each candidate to prevent hallucinated scoring.",
+      inputPreview: "3 Candidate route profiles + Historical statistics",
+      outputPreview: "Scores: Route B (88.5 pts) > Route C (72.1 pts) > Route A (54.3 pts)",
+      latencyMs: 8,
+      tokensEstimated: 95,
+      status: "idle",
+      langgraphState: {
+        scored_candidates: [
+          { routeId: "route-B", score: 88.5, duration: 14 },
+          { routeId: "route-C", score: 72.1, duration: 16 },
+          { routeId: "route-A", score: 54.3, duration: 22 },
+        ],
+      },
+    },
+    {
+      id: "route-step-7",
+      stepNumber: 7,
+      title: "Gemini Route Trade-off Reasoning",
+      subtitle: "LLM trade-off evaluation & explanation",
+      technology: "Google Gemini",
+      techBadgeClass: "adm-tech-gemini",
+      techDetail: "gemini-3.8-flash -> Structured JSON Decision",
+      actionSummary: "Gemini reasons over arrival time guarantees, traffic bottleneck risks, and historical reliability.",
+      inputPreview: "Prompt: Compare Route A (3.1km, 22min) vs Route B (4.0km, 14min, 97% rel).",
+      outputPreview: "Decision: Route B | Reason: Lowest expected arrival delay despite longer distance.",
+      latencyMs: 460,
+      tokensEstimated: 380,
+      status: "idle",
+      langgraphState: {
+        selected_route_id: "route-B",
+        confidence: 0.94,
+      },
+      geminiPrompt: `Select the best overall route for fast, reliable delivery.
+Route A: 3.1 km, normal 10 min, traffic delay +12 min (Total 22 min), historical reliability 88%.
+Route B: 4.0 km, normal 13 min, traffic delay +1 min (Total 14 min), historical reliability 97%.
+Route C: 5.2 km, normal 16 min, traffic delay 0 min (Total 16 min), historical reliability 95%.`,
+      geminiResponse: `{
+  "selectedRouteId": "route-B",
+  "reason": "Route B provides the fastest reliable arrival time (14 min vs 22 min on Route A) by bypassing heavy central corridor congestion, backed by 97% historical delivery reliability.",
+  "confidence": 0.94
+}`,
+    },
+    {
+      id: "route-step-8",
+      stepNumber: 8,
+      title: "Route Validation Gate",
+      subtitle: "Deterministic candidate verification",
+      technology: "LangGraph",
+      techBadgeClass: "adm-tech-langgraph",
+      techDetail: "State validation node",
+      actionSummary: "Validates that Gemini's selectedRouteId strictly matches a verified candidate from the routing provider.",
+      inputPreview: "selectedRouteId = 'route-B'",
+      outputPreview: "Validated: 'route-B' verified against candidate pool",
+      latencyMs: 6,
+      tokensEstimated: 40,
+      status: "idle",
+      langgraphState: {
+        validation_passed: true,
+        selected_route: "route-B",
+      },
+    },
+    {
+      id: "route-step-9",
+      stepNumber: 9,
+      title: "Save Route Version to MongoDB",
+      subtitle: "ToolNode execution via save_selected_route",
+      technology: "LangGraph Tool",
+      techBadgeClass: "adm-tech-tool",
+      techDetail: "MongoDB deliveryRoutes collection",
+      actionSummary: "Stores selected route geometry, waypoints, alternative routes, and increments routeVersion.",
+      inputPreview: "Collection: deliveryRoutes · Version: 2",
+      outputPreview: "Route saved: version 2, polyline with 9 waypoints",
+      latencyMs: 110,
+      tokensEstimated: 90,
+      status: "idle",
+      langgraphState: {
+        route_version: 2,
+        saved_status: "Inserted",
+      },
+      toolDetails: {
+        toolName: "save_selected_route",
+        arguments: { orderId: "ord_1028", routeId: "route-B", estimatedMinutes: 14, routeVersion: 2 },
+        result: { success: true, routeVersion: 2 },
+      },
+    },
+    {
+      id: "route-step-10",
+      stepNumber: 10,
+      title: "SignalR Live Map Broadcast",
+      subtitle: "Real-time delivery group dispatch",
+      technology: "SignalR Hub",
+      techBadgeClass: "adm-tech-signalr",
+      techDetail: "IHubContext<DeliveryHub> -> delivery-{orderId}",
+      actionSummary: "Broadcasts RouteUpdated, ETAUpdated, and RouteRecalculationCompleted to customer and courier apps.",
+      inputPreview: "Group: delivery-ord_1028 · Events: RouteUpdated, ETAUpdated",
+      outputPreview: "Customer & Courier maps transitioned to Route B seamlessly",
+      latencyMs: 32,
+      tokensEstimated: 60,
+      status: "idle",
+      langgraphState: {
+        broadcast_events: ["RouteUpdated", "ETAUpdated", "RouteRecalculationCompleted"],
+        delivery_group: "delivery-ord_1028",
+      },
+    },
+  ];
+
   // Pick current nodes depending on agent and branch
   const currentNodes =
     activeAgent === "food"
       ? foodNodes
+      : activeAgent === "route"
+      ? routeNodes
       : deliveryBranch === "accepted"
       ? deliveryAcceptedNodes
       : deliveryRejectedNodes;
@@ -713,7 +968,105 @@ SELECTED: drv_01 with 95% suitability score.`,
             </div>
             <span className="adm-agent-pill">6-7 Graph Nodes</span>
           </button>
+
+          <button
+            className={`adm-agent-tab ${activeAgent === "route" ? "active" : ""}`}
+            onClick={() => {
+              setActiveAgent("route");
+              handleResetDemo();
+            }}
+          >
+            <span className="adm-agent-tab-icon">🗺️</span>
+            <div>
+              <div className="adm-agent-tab-title">Route Optimization Agent</div>
+              <div className="adm-agent-tab-sub">GPS position → Alternative routes → Live traffic → Historical reliability → Gemini trade-offs → Versioned broadcast</div>
+            </div>
+            <span className="adm-agent-pill">10 Graph Nodes</span>
+          </button>
         </div>
+
+        {/* SECTION 19 — ROUTE OPTIMIZATION PANEL */}
+        {activeAgent === "route" && (
+          <div
+            style={{
+              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(31, 41, 55, 0.95))",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              borderRadius: "12px",
+              padding: "20px",
+              marginTop: "16px",
+              marginBottom: "8px",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "26px" }}>🛰️</span>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "16px", color: "#10b981", fontWeight: "bold" }}>
+                    Autonomous Route Optimization & Monitoring Panel
+                  </h3>
+                  <p style={{ margin: 0, fontSize: "12px", color: "#9ca3af" }}>
+                    Live corridor surveillance. Triggers LangGraph recalculation when traffic delay changes &gt; 20% or ETA increases &gt; 5 mins.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="adm-btn-secondary"
+                style={{ background: "#10b981", color: "#000", fontWeight: "bold", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer" }}
+                onClick={handleStartDemo}
+              >
+                ▶ Run Route Optimization Graph
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+                gap: "12px",
+                background: "rgba(17, 24, 39, 0.85)",
+                padding: "14px",
+                borderRadius: "8px",
+                border: "1px solid #374151",
+              }}
+            >
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>Order</span>
+                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#f9fafb" }}>Order #1028</div>
+                <span style={{ fontSize: "11px", color: "#9ca3af" }}>Courier: Bicycle</span>
+              </div>
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>Previous Route</span>
+                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#ef4444" }}>Route A (Direct)</div>
+                <span style={{ fontSize: "11px", color: "#ef4444" }}>Bottleneck: +12m delay</span>
+              </div>
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>Current Route</span>
+                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#10b981" }}>Route B (Arterial)</div>
+                <span style={{ fontSize: "11px", color: "#10b981" }}>97% reliability score</span>
+              </div>
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>Traffic</span>
+                <div style={{ fontSize: "15px", fontWeight: "bold", color: "#f59e0b" }}>Heavy Corridor</div>
+                <span style={{ fontSize: "11px", color: "#9ca3af" }}>Inner Avenue delayed</span>
+              </div>
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>ETA</span>
+                <div style={{ fontSize: "17px", fontWeight: "bold", color: "#10b981" }}>14 minutes</div>
+                <span style={{ fontSize: "11px", color: "#9ca3af" }}>4.0 km remaining</span>
+              </div>
+              <div>
+                <span style={{ fontSize: "11px", color: "#9ca3af", textTransform: "uppercase" }}>Recalculations</span>
+                <div style={{ fontSize: "17px", fontWeight: "bold", color: "#f9fafb" }}>2 Versions</div>
+                <span style={{ fontSize: "11px", color: "#10b981" }}>SignalR broadcasted</span>
+              </div>
+            </div>
+
+            <div style={{ marginTop: "12px", fontSize: "12px", color: "#d1d5db" }}>
+              <strong>Reason:</strong> "Route B currently has lower expected delay and 97% reliability under current heavy congestion."
+            </div>
+          </div>
+        )}
 
         {/* DELIVERY BRANCH TOGGLE (When Delivery Agent is selected) */}
         {activeAgent === "delivery" && (

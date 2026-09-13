@@ -22,12 +22,14 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly AIServiceClient _aiServiceClient;
     private readonly DeliveryNotificationService _deliveryNotificationService;
     private readonly NotificationService _notificationService;
+    private readonly RouteOptimizationService _routeOptimizationService;
 
     public DeliveryPersonOrderController(
         MongoDbContext mongoDbContext,
         AIServiceClient aiServiceClient,
         DeliveryNotificationService deliveryNotificationService,
-        NotificationService notificationService)
+        NotificationService notificationService,
+        RouteOptimizationService routeOptimizationService)
     {
         _deliveryPersons = mongoDbContext.Database
             .GetCollection<DeliveryPerson>("deliveryPersons");
@@ -47,6 +49,7 @@ public class DeliveryPersonOrderController : ControllerBase
         _aiServiceClient = aiServiceClient;
         _deliveryNotificationService = deliveryNotificationService;
         _notificationService = notificationService;
+        _routeOptimizationService = routeOptimizationService;
     }
 
    
@@ -430,6 +433,9 @@ public class DeliveryPersonOrderController : ControllerBase
                         acceptedDelivery.Id);
                 }
             }
+
+            // Automatically trigger autonomous LangGraph route optimization
+            _ = _aiServiceClient.TriggerRouteOptimizationAsync(acceptedDelivery.Id);
         }
 
         return Ok(new
@@ -769,6 +775,9 @@ public class DeliveryPersonOrderController : ControllerBase
             await _deliveryNotificationService
                 .NotifyDeliveryStatusAsync(
                     completedDelivery);
+
+            // Record completed trip history into MongoDB for machine learning & route reliability stats
+            _ = _routeOptimizationService.RecordCompletedDeliveryHistoryAsync(completedDelivery);
         }
 
         if (completedOrder != null)

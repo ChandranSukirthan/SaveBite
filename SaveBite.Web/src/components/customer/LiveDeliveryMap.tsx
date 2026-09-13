@@ -1,5 +1,10 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useSignalR } from "../../context/SignalRContext";
+import {
+  getDeliveryRoute,
+  type DeliveryRoute,
+  type RouteWaypoint,
+} from "../../services/routeService";
 
 interface LocationPoint {
   latitude: number;
@@ -27,27 +32,9 @@ interface LiveDeliveryMapProps {
   initialDriverLocation?: LocationPoint | null;
   height?: number | string;
   showDetails?: boolean;
+  onRouteSelected?: (routeId: string) => void;
 }
 
-// Haversine distance in kilometers
-function calculateHaversineDistance(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 6371; // Earth radius in km
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Number((R * c).toFixed(2));
-}
 
 export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
   orderId,
@@ -56,8 +43,9 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
   customer,
   driver,
   initialDriverLocation,
-  height = 420,
+  height = 460,
   showDetails = true,
+  onRouteSelected,
 }) => {
   const {
     joinDeliveryGroup,
@@ -65,6 +53,11 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
     onDriverLocationUpdated,
     onDeliveryStatusUpdated,
     onOrderStatusUpdated,
+    onRouteUpdated,
+    onETAUpdated,
+    onTrafficUpdated,
+    onRouteRecalculationStarted,
+    onRouteRecalculationCompleted,
     connectionState,
   } = useSignalR();
 
@@ -88,6 +81,38 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
   const [secondsAgo, setSecondsAgo] = useState<number>(0);
   const [receivedUpdateCount, setReceivedUpdateCount] = useState<number>(0);
   const [currentStatus, setCurrentStatus] = useState<string>(orderStatus);
+
+  // Route state
+  const [currentRoute, setCurrentRoute] = useState<DeliveryRoute | null>(null);
+  const [activeRouteId, setActiveRouteId] = useState<string>("route-B");
+  const [trafficCondition, setTrafficCondition] = useState<string>("Moderate");
+  const [liveEta, setLiveEta] = useState<number>(14);
+  const [liveDistance, setLiveDistance] = useState<number>(4.0);
+  const [isRecalculating, setIsRecalculating] = useState<boolean>(false);
+  const [recalcReason, setRecalcReason] = useState<string>("");
+  const [selectedRouteReason, setSelectedRouteReason] = useState<string>("");
+
+  // Load initial route from backend
+  const loadRouteData = useCallback(async () => {
+    if (!orderId) return;
+    try {
+      const data = await getDeliveryRoute(orderId);
+      if (data && data.route) {
+        setCurrentRoute(data.route);
+        setActiveRouteId(data.route.routeId);
+        setTrafficCondition(data.route.trafficCondition);
+        setLiveEta(data.route.estimatedMinutes);
+        setLiveDistance(data.route.distanceInKilometers);
+        setSelectedRouteReason(data.route.selectionReason);
+      }
+    } catch {
+      // Fallback baseline when route not yet assigned
+    }
+  }, [orderId]);
+
+  useEffect(() => {
+    loadRouteData();
+  }, [loadRouteData]);
 
   // Subscribe to SignalR room delivery-{orderId}
   useEffect(() => {
@@ -118,11 +143,62 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
       }
     });
 
+    const unsubRoute = onRouteUpdated((data) => {
+      if (data.orderId === orderId && data.selectedRoute) {
+        setActiveRouteId(data.selectedRoute.routeId);
+        setTrafficCondition(data.selectedRoute.trafficCondition);
+        setLiveEta(data.selectedRoute.estimatedMinutes);
+        setLiveDistance(data.selectedRoute.distanceInKilometers);
+        if (data.selectedRoute.reason) {
+          setSelectedRouteReason(data.selectedRoute.reason);
+        }
+        setIsRecalculating(false);
+        loadRouteData();
+      }
+    });
+
+    const unsubEta = onETAUpdated((data) => {
+      if (data.orderId === orderId) {
+        setLiveEta(data.estimatedMinutes);
+        setLiveDistance(data.distanceInKilometers);
+      }
+    });
+
+    const unsubTraffic = onTrafficUpdated((data) => {
+      if (data.orderId === orderId) {
+        setTrafficCondition(data.trafficCondition);
+      }
+    });
+
+    const unsubRecalcStart = onRouteRecalculationStarted((data) => {
+      if (data.orderId === orderId) {
+        setIsRecalculating(true);
+        setRecalcReason(data.reason || "Autonomous route optimization in progress...");
+      }
+    });
+
+    const unsubRecalcEnd = onRouteRecalculationCompleted((data) => {
+      if (data.orderId === orderId) {
+        setIsRecalculating(false);
+        setActiveRouteId(data.selectedRouteId);
+        setLiveEta(data.newEta);
+        if (data.reason) {
+          setSelectedRouteReason(data.reason);
+        }
+        loadRouteData();
+      }
+    });
+
     return () => {
       leaveDeliveryGroup(orderId);
       unsubLoc();
       unsubDeliv();
       unsubOrder();
+      unsubRoute();
+      unsubEta();
+      unsubTraffic();
+      unsubRecalcStart();
+      unsubRecalcEnd();
     };
   }, [
     orderId,
@@ -131,6 +207,12 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
     onDriverLocationUpdated,
     onDeliveryStatusUpdated,
     onOrderStatusUpdated,
+    onRouteUpdated,
+    onETAUpdated,
+    onTrafficUpdated,
+    onRouteRecalculationStarted,
+    onRouteRecalculationCompleted,
+    loadRouteData,
   ]);
 
   // Relative timer tick
@@ -142,64 +224,109 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
   }, [lastUpdate]);
 
   // Dynamic geospatial projection onto SVG viewport
-  const viewWidth = 720;
-  const viewHeight = 440;
-  const padding = 70;
+  const viewWidth = 760;
+  const viewHeight = 460;
+  const padding = 75;
 
-  const { restX, restY, custX, custY, driverX, driverY } = useMemo(() => {
-    const lats = [restLat, custLat, driverPos.latitude];
-    const lons = [restLon, custLon, driverPos.longitude];
+  // Collect all coordinate points from origin, dest, driver, and route waypoints to frame bounding box
+  const allPoints = useMemo(() => {
+    const pts: Array<[number, number]> = [
+      [restLat, restLon],
+      [custLat, custLon],
+      [driverPos.latitude, driverPos.longitude],
+    ];
+
+    if (currentRoute?.waypoints) {
+      currentRoute.waypoints.forEach((w) => pts.push([w.latitude, w.longitude]));
+    }
+    if (currentRoute?.alternativeRoutes) {
+      currentRoute.alternativeRoutes.forEach((alt) => {
+        alt.waypoints?.forEach((w) => pts.push([w.latitude, w.longitude]));
+      });
+    }
+
+    return pts;
+  }, [restLat, restLon, custLat, custLon, driverPos, currentRoute]);
+
+  const { projectX, projectY, restX, restY, custX, custY, driverX, driverY } = useMemo(() => {
+    const lats = allPoints.map((p) => p[0]);
+    const lons = allPoints.map((p) => p[1]);
 
     const minLat = Math.min(...lats);
     const maxLat = Math.max(...lats);
     const minLon = Math.min(...lons);
     const maxLon = Math.max(...lons);
 
-    // Prevent divide by zero if points are identical
-    const latSpan = Math.max(maxLat - minLat, 0.005);
-    const lonSpan = Math.max(maxLon - minLon, 0.005);
+    const latSpan = Math.max(maxLat - minLat, 0.008);
+    const lonSpan = Math.max(maxLon - minLon, 0.008);
 
-    const projectX = (lon: number) =>
+    const pX = (lon: number) =>
       padding + ((lon - minLon) / lonSpan) * (viewWidth - 2 * padding);
 
-    // Invert Y because SVG coordinates increase downwards
-    const projectY = (lat: number) =>
+    const pY = (lat: number) =>
       viewHeight - (padding + ((lat - minLat) / latSpan) * (viewHeight - 2 * padding));
 
     return {
-      restX: projectX(restLon),
-      restY: projectY(restLat),
-      custX: projectX(custLon),
-      custY: projectY(custLat),
-      driverX: projectX(driverPos.longitude),
-      driverY: projectY(driverPos.latitude),
+      projectX: pX,
+      projectY: pY,
+      restX: pX(restLon),
+      restY: pY(restLat),
+      custX: pX(custLon),
+      custY: pY(custLat),
+      driverX: pX(driverPos.longitude),
+      driverY: pY(driverPos.latitude),
     };
-  }, [restLat, restLon, custLat, custLon, driverPos]);
+  }, [allPoints, restLat, restLon, custLat, custLon, driverPos]);
 
-  // Compute live remaining distance to customer
-  const remainingKm = useMemo(() => {
-    return calculateHaversineDistance(
-      driverPos.latitude,
-      driverPos.longitude,
-      custLat,
-      custLon
-    );
-  }, [driverPos, custLat, custLon]);
+  // Format waypoints into SVG polyline points string
+  const formatPolylinePoints = useCallback(
+    (waypoints?: RouteWaypoint[] | null) => {
+      if (!waypoints || waypoints.length === 0) return "";
+      return waypoints
+        .map((w) => {
+          const lat = w.latitude;
+          const lon = w.longitude;
+          return `${projectX(lon).toFixed(1)},${projectY(lat).toFixed(1)}`;
+        })
+        .join(" ");
+    },
+    [projectX, projectY]
+  );
 
-  // Dynamic ETA calculation (assuming average speed ~20 km/h)
-  const dynamicEtaMins = useMemo(() => {
-    if (currentStatus === "Delivered") return 0;
-    const est = Math.ceil((remainingKm / 20) * 60) + 2;
-    return Math.max(est, 1);
-  }, [remainingKm, currentStatus]);
+  // Recommended route polyline string
+  const recommendedPolyline = useMemo(() => {
+    if (currentRoute?.waypoints && currentRoute.waypoints.length > 0) {
+      return formatPolylinePoints(currentRoute.waypoints);
+    }
+    // Fallback baseline curve between restaurant and customer
+    const midX = (restX + custX) / 2 - 40;
+    const midY = (restY + custY) / 2 + 30;
+    return `${restX},${restY} ${midX},${midY} ${custX},${custY}`;
+  }, [currentRoute, formatPolylinePoints, restX, restY, custX, custY]);
+
+  // Alternative route polyline strings
+  const alternativePolylines = useMemo(() => {
+    if (!currentRoute?.alternativeRoutes) return [];
+    return currentRoute.alternativeRoutes.map((alt) => ({
+      ...alt,
+      polylineStr: formatPolylinePoints(alt.waypoints),
+    }));
+  }, [currentRoute, formatPolylinePoints]);
 
   // Driver vehicle icon
   const vehicleIcon = useMemo(() => {
     const v = (driver?.vehicleType || "").toLowerCase();
     if (v.includes("scooter") || v.includes("motor")) return "🛵";
-    if (v.includes("car") || v.includes("van")) return "🚗";
+    if (v.includes("car") || v.includes("ev") || v.includes("van")) return "🚗";
     return "🚴";
   }, [driver?.vehicleType]);
+
+  const trafficBadgeColor = useMemo(() => {
+    const t = (trafficCondition || "").toLowerCase();
+    if (t.includes("severe") || t.includes("heavy")) return "#ef4444";
+    if (t.includes("mod")) return "#f59e0b";
+    return "#10b981";
+  }, [trafficCondition]);
 
   const isStale = secondsAgo > 35 && receivedUpdateCount > 0;
 
@@ -220,44 +347,93 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
               {currentStatus === "Delivered"
                 ? "DELIVERY COMPLETE"
                 : connectionState === "Connected"
-                ? "LIVE SIGNALR TELEMETRY"
+                ? "LIVE SIGNALR NAVIGATION"
                 : "RECONNECTING..."}
             </span>
+          </div>
+
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "4px 10px",
+              borderRadius: "20px",
+              background: "rgba(30, 30, 30, 0.85)",
+              border: `1px solid ${trafficBadgeColor}`,
+              fontSize: "11px",
+              fontWeight: 600,
+              color: trafficBadgeColor,
+            }}
+          >
+            <span>🚦 Traffic:</span>
+            <span>{trafficCondition}</span>
           </div>
 
           <span className="ldm-timestamp">
             {currentStatus === "Delivered"
               ? "Completed"
               : secondsAgo === 0
-              ? "Updated just now"
-              : `Updated ${secondsAgo}s ago`}
+              ? "GPS updated just now"
+              : `GPS updated ${secondsAgo}s ago`}
           </span>
         </div>
 
         <div className="ldm-hud-right">
           <div className="ldm-metric-pill">
+            <span className="ldm-metric-label">ROUTE</span>
+            <strong className="ldm-metric-val" style={{ color: "#10b981" }}>
+              {activeRouteId} (v{currentRoute?.routeVersion || 1})
+            </strong>
+          </div>
+
+          <div className="ldm-metric-pill">
             <span className="ldm-metric-label">DISTANCE</span>
             <strong className="ldm-metric-val">
-              {currentStatus === "Delivered" ? "Arrived" : `${remainingKm} km`}
+              {currentStatus === "Delivered" ? "Arrived" : `${liveDistance} km`}
             </strong>
           </div>
 
           <div className="ldm-metric-pill ldm-metric-pill--eta">
             <span className="ldm-metric-label">LIVE ETA</span>
             <strong className="ldm-metric-val">
-              {currentStatus === "Delivered" ? "Delivered" : `~${dynamicEtaMins} mins`}
+              {currentStatus === "Delivered" ? "Delivered" : `~${liveEta} mins`}
             </strong>
           </div>
         </div>
       </div>
 
+      {/* RECALCULATING NOTIFICATION BANNER */}
+      {isRecalculating && (
+        <div
+          style={{
+            position: "absolute",
+            top: "68px",
+            left: "20px",
+            right: "20px",
+            zIndex: 15,
+            background: "linear-gradient(90deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95))",
+            color: "#000",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            boxShadow: "0 4px 15px rgba(0,0,0,0.3)",
+            fontWeight: 600,
+            fontSize: "12px",
+          }}
+        >
+          <span style={{ fontSize: "16px", animation: "spin 1.5s linear infinite" }}>🔄</span>
+          <span><strong>AI Route Recalculation:</strong> {recalcReason}</span>
+        </div>
+      )}
+
       {/* STALE / GPS WARNING OVERLAY */}
-      {isStale && currentStatus !== "Delivered" && (
+      {isStale && currentStatus !== "Delivered" && !isRecalculating && (
         <div className="ldm-stale-banner">
           <span>⚠️</span>
-          <span>
-            Waiting for courier's newest GPS ping. Displaying last known location.
-          </span>
+          <span>Waiting for courier's newest GPS ping. Displaying last known location.</span>
         </div>
       )}
 
@@ -270,7 +446,6 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
         aria-label="Live courier delivery route map"
       >
         <defs>
-          {/* Subtle Grid Pattern for cartographic aesthetic */}
           <pattern
             id="ldmGrid"
             width="40"
@@ -285,21 +460,20 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
             />
           </pattern>
 
-          {/* Linear gradient for trajectory path */}
           <linearGradient
-            id="ldmRouteGrad"
+            id="ldmRouteGradRecommended"
             x1="0%"
             y1="0%"
             x2="100%"
             y2="100%"
           >
-            <stop offset="0%" stopColor="#f5c518" stopOpacity="0.8" />
-            <stop offset="100%" stopColor="#10b981" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="#f5c518" stopOpacity="0.9" />
+            <stop offset="60%" stopColor="#10b981" stopOpacity="0.95" />
+            <stop offset="100%" stopColor="#059669" stopOpacity="1" />
           </linearGradient>
 
-          {/* Glow filter for driver marker */}
           <filter id="ldmGlow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="6" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
             <feMerge>
               <feMergeNode />
               <feMergeNode in="SourceGraphic" />
@@ -313,42 +487,69 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
 
         {/* City blocks / decorative neighborhood contours */}
         <path
-          d={`M 30,80 Q 200,60 380,90 T 700,70 L 700,160 Q 450,140 260,180 Z`}
+          d={`M 30,80 Q 200,60 380,90 T 740,70 L 740,160 Q 450,140 260,180 Z`}
           fill="#1c1c1c"
           opacity="0.6"
         />
         <path
-          d={`M 20,280 Q 240,240 480,260 T 710,290 L 710,400 Q 380,370 20,410 Z`}
+          d={`M 20,280 Q 240,240 480,260 T 750,290 L 750,420 Q 380,390 20,430 Z`}
           fill="#1c1c1c"
           opacity="0.6"
         />
 
-        {/* ROUTE TRAJECTORY LINES */}
-        {/* Full planned route: Restaurant to Customer */}
-        <line
-          x1={restX}
-          y1={restY}
-          x2={custX}
-          y2={custY}
-          className="ldm-route-line-bg"
-        />
+        {/* ============================================================
+            ALTERNATIVE ROUTES (Dashed, subtle, clickable)
+            ============================================================ */}
+        {alternativePolylines.map((alt) => (
+          <g
+            key={alt.routeId}
+            style={{ cursor: "pointer" }}
+            onClick={() => onRouteSelected?.(alt.routeId)}
+          >
+            <polyline
+              points={alt.polylineStr}
+              fill="none"
+              stroke="#6b7280"
+              strokeWidth="4"
+              strokeDasharray="6 5"
+              opacity="0.55"
+            />
+            {/* Label along alternative path */}
+            {alt.waypoints && alt.waypoints.length > 3 && (
+              <text
+                x={projectX(alt.waypoints[Math.floor(alt.waypoints.length / 2)].longitude)}
+                y={projectY(alt.waypoints[Math.floor(alt.waypoints.length / 2)].latitude) - 8}
+                fill="#9ca3af"
+                fontSize="10"
+                fontWeight="600"
+                textAnchor="middle"
+              >
+                {alt.routeId}: {alt.estimatedMinutes}m ({alt.distanceInKilometers}km)
+              </text>
+            )}
+          </g>
+        ))}
 
-        {/* Active travel segment: Restaurant to Driver */}
-        <line
-          x1={restX}
-          y1={restY}
-          x2={driverX}
-          y2={driverY}
-          className="ldm-route-line-traveled"
+        {/* ============================================================
+            RECOMMENDED ROUTE (Glowing emerald/gold line)
+            ============================================================ */}
+        {/* Outer Glow Line */}
+        <polyline
+          points={recommendedPolyline}
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="9"
+          strokeOpacity="0.25"
+          filter="url(#ldmGlow)"
         />
-
-        {/* Remaining travel segment: Driver to Customer */}
-        <line
-          x1={driverX}
-          y1={driverY}
-          x2={custX}
-          y2={custY}
-          className="ldm-route-line-active"
+        {/* Main Route Polyline */}
+        <polyline
+          points={recommendedPolyline}
+          fill="none"
+          stroke="url(#ldmRouteGradRecommended)"
+          strokeWidth="4.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
         />
 
         {/* ============================================================
@@ -443,123 +644,114 @@ export const LiveDeliveryMap: React.FC<LiveDeliveryMapProps> = ({
             fontWeight="bold"
             fill="#ffffff"
           >
-            Your Delivery Address
+            Delivery Destination
           </text>
         </g>
 
         {/* ============================================================
-            3. LIVE MOVING DRIVER COURIER MARKER (PULSE + SMOOTH GLIDE)
+            3. LIVE DRIVER MARKER (Animated with SignalR updates)
             ============================================================ */}
-        <g className="ldm-driver-group">
-          {/* Animated Outer Radar Wave */}
+        <g className="ldm-pin-group ldm-pin-group--driver">
           <circle
             cx={driverX}
             cy={driverY}
             r="28"
             fill="none"
-            stroke="#f5c518"
-            strokeWidth="2"
-            className="ldm-radar-wave"
+            stroke="#10b981"
+            strokeWidth="1.5"
+            className="ldm-driver-pulse"
           />
-
-          {/* Vehicle Halo */}
-          <circle
-            cx={driverX}
-            cy={driverY}
-            r="20"
-            fill="#f5c518"
-            filter="url(#ldmGlow)"
-            className="ldm-driver-halo"
-          />
-
-          {/* Vehicle Body Pin */}
           <circle
             cx={driverX}
             cy={driverY}
             r="17"
-            fill="#0f0f0f"
-            stroke="#f5c518"
-            strokeWidth="3"
-            className="ldm-driver-pin"
+            fill="#111827"
+            stroke="#10b981"
+            strokeWidth="2.5"
+            filter="url(#ldmGlow)"
           />
-
-          {/* Courier Vehicle Icon */}
           <text
             x={driverX}
-            y={driverY + 6}
+            y={driverY + 5}
             textAnchor="middle"
-            fontSize="17"
-            className="ldm-driver-icon"
+            fontSize="15"
           >
             {vehicleIcon}
           </text>
-
-          {/* Floating Driver Badge Pill */}
-          <g transform={`translate(${driverX - 55}, ${driverY - 44})`}>
-            <rect
-              width="110"
-              height="24"
-              rx="12"
-              fill="#0f0f0f"
-              stroke="#f5c518"
-              strokeWidth="1.5"
-            />
-            <text
-              x="55"
-              y="16"
-              textAnchor="middle"
-              fontSize="10.5"
-              fontWeight="800"
-              fill="#ffffff"
-            >
-              {driver?.vehicleNumber || "COURIER EN ROUTE"}
-            </text>
-          </g>
+          <rect
+            x={driverX - 55}
+            y={driverY + 22}
+            width="110"
+            height="20"
+            rx="5"
+            fill="#111827"
+            stroke="#10b981"
+            strokeWidth="1"
+          />
+          <text
+            x={driverX}
+            y={driverY + 36}
+            textAnchor="middle"
+            fontSize="10"
+            fontWeight="bold"
+            fill="#10b981"
+          >
+            {driver?.name || "Live Courier"}
+          </text>
         </g>
       </svg>
 
-      {/* BOTTOM COURIER DETAIL CARD */}
+      {/* MAP BOTTOM FOOTER WITH REASON & ROUTE COMPARISON */}
       {showDetails && (
-        <div className="ldm-footer-card">
-          <div className="ldm-courier-profile">
-            <div className="ldm-courier-avatar">{vehicleIcon}</div>
-            <div className="ldm-courier-info">
-              <div className="ldm-courier-name-row">
-                <strong className="ldm-courier-name">
-                  {driver?.name || "SaveBite Eco-Courier"}
-                </strong>
-                <span className="ldm-vehicle-tag">
-                  {driver?.vehicleType || "Electric Bike"} •{" "}
-                  {driver?.vehicleNumber || "ECO-BIKE"}
-                </span>
-              </div>
-              <span className="ldm-coords-text">
-                GPS: {driverPos.latitude.toFixed(4)}°N,{" "}
-                {driverPos.longitude.toFixed(4)}°W (Updated via SignalR)
-              </span>
-            </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: "12px",
+            left: "14px",
+            right: "14px",
+            background: "rgba(20, 20, 20, 0.92)",
+            backdropFilter: "blur(8px)",
+            border: "1px solid #333",
+            borderRadius: "8px",
+            padding: "8px 14px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            fontSize: "12px",
+            color: "#e5e7eb",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "14px" }}>🤖</span>
+            <span>
+              <strong>AI Route Optimization:</strong>{" "}
+              {selectedRouteReason || "Route B selected with lower expected traffic delay."}
+            </span>
           </div>
-
-          <div className="ldm-footer-actions">
-            {driver?.phoneNumber && (
-              <a
-                href={`tel:${driver.phoneNumber}`}
-                className="ldm-contact-btn"
-                title="Call Driver"
-              >
-                📞 Call Driver
-              </a>
-            )}
-            <div className="ldm-eta-box">
-              <span className="ldm-eta-label">ESTIMATED ARRIVAL</span>
-              <strong className="ldm-eta-val">
-                {currentStatus === "Delivered" ? "Delivered" : `~${dynamicEtaMins} Mins`}
-              </strong>
-            </div>
+          <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+            <span
+              style={{
+                display: "inline-block",
+                width: "12px",
+                height: "3px",
+                background: "#10b981",
+                borderRadius: "2px",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#9ca3af" }}>Recommended</span>
+            <span
+              style={{
+                display: "inline-block",
+                width: "12px",
+                height: "3px",
+                background: "#6b7280",
+                borderTop: "2px dashed #9ca3af",
+              }}
+            />
+            <span style={{ fontSize: "11px", color: "#9ca3af" }}>Alternative</span>
           </div>
         </div>
       )}
     </div>
   );
 };
-

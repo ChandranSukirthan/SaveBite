@@ -122,4 +122,86 @@ public class AIServiceClient
                 $"Response: {responseBody}");
         }
     }
+
+    public async Task TriggerRouteOptimizationAsync(
+        string deliveryRequestId)
+    {
+        var baseUrl =
+            _configuration["AIService:BaseUrl"];
+
+        var serviceKey =
+            _configuration["AIService:ServiceKey"];
+
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceKey))
+        {
+            return;
+        }
+
+        var url =
+            $"{baseUrl.TrimEnd('/')}" +
+            "/agents/route/optimize" +
+            "?delivery_request_id=" +
+            Uri.EscapeDataString(deliveryRequestId);
+
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                url);
+
+        request.Headers.Add(
+            "X-AI-Service-Key",
+            serviceKey);
+
+        try
+        {
+            await _httpClient.SendAsync(request);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RouteOptimization Notice] Could not contact AI route service: {ex.Message}");
+        }
+    }
+
+    public async Task TriggerRouteRecalculationAsync(
+        string deliveryRequestId,
+        string? reason = null,
+        bool simulateTrafficSpike = false)
+    {
+        var baseUrl =
+            _configuration["AIService:BaseUrl"];
+
+        var serviceKey =
+            _configuration["AIService:ServiceKey"];
+
+        if (string.IsNullOrWhiteSpace(baseUrl) || string.IsNullOrWhiteSpace(serviceKey))
+        {
+            return;
+        }
+
+        var url =
+            $"{baseUrl.TrimEnd('/')}" +
+            "/agents/route/recalculate" +
+            "?delivery_request_id=" +
+            Uri.EscapeDataString(deliveryRequestId) +
+            (string.IsNullOrWhiteSpace(reason) ? "" : "&reason=" + Uri.EscapeDataString(reason)) +
+            $"&simulate_traffic_spike={simulateTrafficSpike.ToString().ToLower()}";
+
+        using var request =
+            new HttpRequestMessage(
+                HttpMethod.Post,
+                url);
+
+        request.Headers.Add(
+            "X-AI-Service-Key",
+            serviceKey);
+
+        try
+        {
+            await _httpClient.SendAsync(request);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RouteRecalculation Notice] Could not contact AI route service: {ex.Message}");
+        }
+    }
 }

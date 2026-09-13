@@ -20,6 +20,7 @@ export interface Order {
   deliveryFee: number;
   totalAmount: number;
   deliveryAddress: string;
+  deliveryLocation?: FoodLocation;
   deliveryRequestId?: string;
   status: OrderStatus;
   createdAt: string;

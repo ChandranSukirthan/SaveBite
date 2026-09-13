@@ -45,6 +45,7 @@ const DeliveryDashboard = lazy(() => import("./pages/dashboards/DeliveryDashboar
 const DeliveryProfilePage = lazy(() => import("./pages/delivery/DeliveryProfilePage").then((m) => ({ default: m.DeliveryProfilePage })));
 const DeliveryRequestsPage = lazy(() => import("./pages/delivery/DeliveryRequestsPage").then((m) => ({ default: m.DeliveryRequestsPage })));
 const DeliveryNotificationsPage = lazy(() => import("./pages/delivery/DeliveryNotificationsPage").then((m) => ({ default: m.DeliveryNotificationsPage })));
+const DeliveryActiveNavigationPage = lazy(() => import("./pages/delivery/DeliveryActiveNavigationPage").then((m) => ({ default: m.DeliveryActiveNavigationPage })));
 
 const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
 const AdminRestaurantsPage = lazy(() => import("./pages/admin/AdminRestaurantsPage").then((m) => ({ default: m.AdminRestaurantsPage })));
@@ -474,6 +475,20 @@ function App() {
               >
                 <ProfileGate>
                   <DeliveryRequestsPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/delivery/active"
+            element={
+              <RoleProtectedRoute
+                allowedRole="DeliveryPerson"
+                fallbackLogin="/delivery/login"
+              >
+                <ProfileGate>
+                  <DeliveryActiveNavigationPage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }

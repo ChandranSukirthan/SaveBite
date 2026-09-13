@@ -82,6 +82,8 @@ builder.Services.AddSignalR();
 
 builder.Services.AddScoped<DeliveryNotificationService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddSingleton<IRoutingProvider, MockRoutingProvider>();
+builder.Services.AddScoped<RouteOptimizationService>();
 
 builder.Services.AddHttpClient<AIServiceClient>();
 

@@ -44,6 +44,21 @@ interface SignalRContextType {
   onNotificationReceived: (
     callback: (data: NotificationReceivedEvent) => void
   ) => () => void;
+  onRouteUpdated: (
+    callback: (data: import("../services/signalrService").RouteUpdatedEvent) => void
+  ) => () => void;
+  onETAUpdated: (
+    callback: (data: import("../services/signalrService").ETAUpdatedEvent) => void
+  ) => () => void;
+  onTrafficUpdated: (
+    callback: (data: import("../services/signalrService").TrafficUpdatedEvent) => void
+  ) => () => void;
+  onRouteRecalculationStarted: (
+    callback: (data: import("../services/signalrService").RouteRecalculationStartedEvent) => void
+  ) => () => void;
+  onRouteRecalculationCompleted: (
+    callback: (data: import("../services/signalrService").RouteRecalculationCompletedEvent) => void
+  ) => () => void;
   dismissToast: (id: string) => void;
 }
 
@@ -143,6 +158,41 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  const onRouteUpdated = useCallback(
+    (callback: (data: any) => void) => {
+      return signalRService.onRouteUpdated(callback);
+    },
+    []
+  );
+
+  const onETAUpdated = useCallback(
+    (callback: (data: any) => void) => {
+      return signalRService.onETAUpdated(callback);
+    },
+    []
+  );
+
+  const onTrafficUpdated = useCallback(
+    (callback: (data: any) => void) => {
+      return signalRService.onTrafficUpdated(callback);
+    },
+    []
+  );
+
+  const onRouteRecalculationStarted = useCallback(
+    (callback: (data: any) => void) => {
+      return signalRService.onRouteRecalculationStarted(callback);
+    },
+    []
+  );
+
+  const onRouteRecalculationCompleted = useCallback(
+    (callback: (data: any) => void) => {
+      return signalRService.onRouteRecalculationCompleted(callback);
+    },
+    []
+  );
+
   // Memoize context value to prevent consumer re-render cascading
   const contextValue = useMemo<SignalRContextType>(
     () => ({
@@ -154,6 +204,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({
       onDriverAssigned,
       onDriverLocationUpdated,
       onNotificationReceived,
+      onRouteUpdated,
+      onETAUpdated,
+      onTrafficUpdated,
+      onRouteRecalculationStarted,
+      onRouteRecalculationCompleted,
       dismissToast,
     }),
     [
@@ -165,6 +220,11 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({
       onDriverAssigned,
       onDriverLocationUpdated,
       onNotificationReceived,
+      onRouteUpdated,
+      onETAUpdated,
+      onTrafficUpdated,
+      onRouteRecalculationStarted,
+      onRouteRecalculationCompleted,
       dismissToast,
     ]
   );

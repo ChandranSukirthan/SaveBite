@@ -11,6 +11,7 @@ from agents.food_matching_agent import (
 from agents.order_agent import (
     build_order_graph,
 )
+from agents.route_agent import route_graph
 from config.settings import settings
 from tools.customer_tool import get_customer_profile
 from tools.food_tool import search_nearby_food
@@ -564,4 +565,78 @@ Do not modify the food item or quantity.
 
     return {
         "message": final_message,
+    }
+
+
+@app.post("/agents/route/optimize")
+async def optimize_route(
+    delivery_request_id: str,
+    x_ai_service_key: str | None = Header(default=None),
+):
+    validate_ai_service_key(x_ai_service_key)
+    initial_state = {
+        "delivery_request_id": delivery_request_id,
+        "simulate_traffic_spike": False,
+        "recalculation_count": 0,
+    }
+    result = await route_graph.ainvoke(initial_state)
+    return {
+        "success": bool(result.get("selected_route")),
+        "delivery_request_id": delivery_request_id,
+        "order_id": result.get("order_id"),
+        "selectedRoute": result.get("selected_route"),
+        "candidateRoutes": result.get("candidate_routes"),
+        "reason": result.get("selected_route_reason"),
+        "routeVersion": result.get("route_version", 1),
+        "status": result.get("status"),
+    }
+
+
+@app.post("/agents/route/recalculate")
+async def recalculate_route(
+    delivery_request_id: str,
+    reason: str | None = None,
+    simulate_traffic_spike: bool = False,
+    x_ai_service_key: str | None = Header(default=None),
+):
+    validate_ai_service_key(x_ai_service_key)
+    initial_state = {
+        "delivery_request_id": delivery_request_id,
+        "simulate_traffic_spike": simulate_traffic_spike,
+        "selected_route_reason": reason or "Dynamic recalculation triggered",
+        "recalculation_count": 1,
+    }
+    result = await route_graph.ainvoke(initial_state)
+    return {
+        "success": bool(result.get("selected_route")),
+        "delivery_request_id": delivery_request_id,
+        "order_id": result.get("order_id"),
+        "selectedRoute": result.get("selected_route"),
+        "candidateRoutes": result.get("candidate_routes"),
+        "reason": result.get("selected_route_reason"),
+        "routeVersion": result.get("route_version", 2),
+        "status": result.get("status"),
+    }
+
+
+@app.get("/agents/route/telemetry/{delivery_request_id}")
+async def get_route_telemetry(
+    delivery_request_id: str,
+    x_ai_service_key: str | None = Header(default=None),
+):
+    validate_ai_service_key(x_ai_service_key)
+    initial_state = {
+        "delivery_request_id": delivery_request_id,
+        "simulate_traffic_spike": False,
+    }
+    result = await route_graph.ainvoke(initial_state)
+    return {
+        "delivery_request_id": delivery_request_id,
+        "order_id": result.get("order_id"),
+        "candidateRoutes": result.get("candidate_routes"),
+        "traffic": result.get("traffic_information"),
+        "historicalData": result.get("historical_route_data"),
+        "selectedRoute": result.get("selected_route"),
+        "reason": result.get("selected_route_reason"),
+        "routeVersion": result.get("route_version", 1),
     }

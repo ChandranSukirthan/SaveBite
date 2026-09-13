@@ -110,4 +110,106 @@ public class DeliveryNotificationService
                         DateTime.UtcNow
                 });
     }
+
+    public async Task NotifyRouteUpdatedAsync(
+        string orderId,
+        DeliveryRoute route)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "RouteUpdated",
+                new
+                {
+                    orderId,
+                    deliveryRequestId = route.DeliveryRequestId,
+                    routeVersion = route.RouteVersion,
+                    selectedRoute = new
+                    {
+                        routeId = route.RouteId,
+                        distanceInKilometers = route.DistanceInKilometers,
+                        estimatedMinutes = route.EstimatedMinutes,
+                        trafficCondition = route.TrafficCondition,
+                        trafficDelayMinutes = route.TrafficDelayMinutes,
+                        polyline = route.Polyline,
+                        waypoints = route.Waypoints,
+                        reason = route.SelectionReason,
+                        score = route.SelectionScore
+                    },
+                    alternativeRoutes = route.AlternativeRoutes,
+                    updatedAt = route.UpdatedAt
+                });
+    }
+
+    public async Task NotifyETAUpdatedAsync(
+        string orderId,
+        int estimatedMinutes,
+        double distanceInKilometers)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "ETAUpdated",
+                new
+                {
+                    orderId,
+                    estimatedMinutes,
+                    distanceInKilometers,
+                    updatedAt = DateTime.UtcNow
+                });
+    }
+
+    public async Task NotifyTrafficUpdatedAsync(
+        string orderId,
+        string trafficCondition,
+        double delayMinutes)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "TrafficUpdated",
+                new
+                {
+                    orderId,
+                    trafficCondition,
+                    delayMinutes,
+                    updatedAt = DateTime.UtcNow
+                });
+    }
+
+    public async Task NotifyRouteRecalculationStartedAsync(
+        string orderId,
+        string reason)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "RouteRecalculationStarted",
+                new
+                {
+                    orderId,
+                    reason,
+                    timestamp = DateTime.UtcNow
+                });
+    }
+
+    public async Task NotifyRouteRecalculationCompletedAsync(
+        string orderId,
+        string selectedRouteId,
+        int newEta,
+        string reason)
+    {
+        await _hubContext.Clients
+            .Group($"delivery-{orderId}")
+            .SendAsync(
+                "RouteRecalculationCompleted",
+                new
+                {
+                    orderId,
+                    selectedRouteId,
+                    newEta,
+                    reason,
+                    timestamp = DateTime.UtcNow
+                });
+    }
 }
