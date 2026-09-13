@@ -18,6 +18,7 @@ public class DeliveryPersonOrderController : ControllerBase
     private readonly IMongoCollection<DeliveryRequest> _deliveryRequests;
     private readonly IMongoCollection<Order> _orders;
     private readonly IMongoCollection<Restaurant> _restaurants;
+    private readonly IMongoCollection<Customer> _customers;
     private readonly AIServiceClient _aiServiceClient;
     private readonly DeliveryNotificationService _deliveryNotificationService;
     private readonly NotificationService _notificationService;
@@ -39,6 +40,9 @@ public class DeliveryPersonOrderController : ControllerBase
 
         _restaurants = mongoDbContext.Database
             .GetCollection<Restaurant>("restaurants");
+
+        _customers = mongoDbContext.Database
+            .GetCollection<Customer>("customers");
 
         _aiServiceClient = aiServiceClient;
         _deliveryNotificationService = deliveryNotificationService;
@@ -255,6 +259,44 @@ public class DeliveryPersonOrderController : ControllerBase
                         true)
             );
 
+            // Notify customer and restaurant about courier decline and AI re-dispatch
+            var order = await _orders
+                .Find(x => x.Id == deliveryRequest.OrderId)
+                .FirstOrDefaultAsync();
+
+            if (order != null)
+            {
+                var customer = await _customers
+                    .Find(x => x.Id == order.CustomerId)
+                    .FirstOrDefaultAsync();
+
+                if (customer != null && !string.IsNullOrEmpty(customer.UserId))
+                {
+                    await _notificationService.CreateAsync(
+                        customer.UserId,
+                        "Delivery Dispatch Update",
+                        "A courier was unable to accept. SaveBite AI is searching for an alternate driver.",
+                        NotificationType.DeliveryRejected,
+                        order.Id,
+                        id);
+                }
+
+                var restaurant = await _restaurants
+                    .Find(x => x.Id == order.RestaurantId)
+                    .FirstOrDefaultAsync();
+
+                if (restaurant != null && !string.IsNullOrEmpty(restaurant.OwnerId))
+                {
+                    await _notificationService.CreateAsync(
+                        restaurant.OwnerId,
+                        "Courier Declined",
+                        "A courier declined the delivery request. Re-dispatching to nearby partners.",
+                        NotificationType.DeliveryRejected,
+                        order.Id,
+                        id);
+                }
+            }
+
             // Automatically trigger the AI retry workflow.
             try
             {
@@ -360,12 +402,29 @@ public class DeliveryPersonOrderController : ControllerBase
                             x.Id == order.CustomerId)
                         .FirstOrDefaultAsync();
 
-                if (customer != null)
+                if (customer != null && !string.IsNullOrEmpty(customer.UserId))
                 {
                     await _notificationService.CreateAsync(
                         customer.UserId,
                         "Driver Accepted",
                         "Your delivery person has accepted the delivery.",
+                        NotificationType.DriverAccepted,
+                        order.Id,
+                        acceptedDelivery.Id);
+                }
+
+                var restaurant =
+                    await _restaurants
+                        .Find(x =>
+                            x.Id == order.RestaurantId)
+                        .FirstOrDefaultAsync();
+
+                if (restaurant != null && !string.IsNullOrEmpty(restaurant.OwnerId))
+                {
+                    await _notificationService.CreateAsync(
+                        restaurant.OwnerId,
+                        "Driver Accepted Delivery",
+                        "A courier has accepted the delivery request.",
                         NotificationType.DriverAccepted,
                         order.Id,
                         acceptedDelivery.Id);
@@ -717,6 +776,45 @@ public class DeliveryPersonOrderController : ControllerBase
             await _deliveryNotificationService
                 .NotifyOrderStatusAsync(
                     completedOrder);
+
+            var customer =
+                await _customers
+                    .Find(x =>
+                        x.Id ==
+                        completedOrder.CustomerId)
+                    .FirstOrDefaultAsync();
+
+            if (customer != null && !string.IsNullOrEmpty(customer.UserId))
+            {
+                await _notificationService.CreateAsync(
+                    customer.UserId,
+                    "Delivery Completed",
+                    "Your surplus food order has arrived! Enjoy your meal.",
+                    NotificationType.DeliveryCompleted,
+                    completedOrder.Id,
+                    completedDelivery?.Id);
+            }
+
+            var restaurant =
+                await _restaurants
+                    .Find(x =>
+                        x.Id ==
+                        completedOrder.RestaurantId)
+                    .FirstOrDefaultAsync();
+
+            if (restaurant != null && !string.IsNullOrEmpty(restaurant.OwnerId))
+            {
+                var shortId = completedOrder.Id.Length > 8
+                    ? completedOrder.Id.Substring(completedOrder.Id.Length - 8)
+                    : completedOrder.Id;
+                await _notificationService.CreateAsync(
+                    restaurant.OwnerId,
+                    "Order Delivered",
+                    $"Order #{shortId} has been successfully delivered to the customer.",
+                    NotificationType.DeliveryCompleted,
+                    completedOrder.Id,
+                    completedDelivery?.Id);
+            }
         }
 
         return Ok(new

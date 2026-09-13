@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getCustomerProfile } from "../../services/profileService";
-import { getNotifications } from "../../services/restaurantService";
+import { NotificationBellDropdown } from "../notifications/NotificationBellDropdown";
 import type { CustomerProfile } from "../../types/profile";
 
 interface CustomerLayoutProps {
@@ -16,20 +16,14 @@ export function CustomerLayout({ children, onLocationUpdate }: CustomerLayoutPro
   const location = useLocation();
 
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
-  const [unreadCount, setUnreadCount] = useState<number>(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [detectingLocation, setDetectingLocation] = useState(false);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [prof, notifs] = await Promise.all([
-          getCustomerProfile().catch(() => null),
-          getNotifications(20).catch(() => []),
-        ]);
+        const prof = await getCustomerProfile().catch(() => null);
         if (prof) setProfile(prof);
-        const unread = notifs.filter((n) => !n.isRead).length;
-        setUnreadCount(unread);
       } catch (err) {
         console.error("Failed to load customer layout data:", err);
       }
@@ -67,6 +61,7 @@ export function CustomerLayout({ children, onLocationUpdate }: CustomerLayoutPro
 
   const navLinks = [
     { label: "Dashboard", path: "/customer/dashboard", icon: "🏠" },
+    { label: "Notifications", path: "/customer/notifications", icon: "🔔" },
     { label: "AI Recommendations", path: "/customer/ai-recommendations", icon: "✨" },
     { label: "Explore Food", path: "/customer/food", icon: "🍲" },
     { label: "My Orders", path: "/customer/orders", icon: "📦" },
@@ -109,18 +104,7 @@ export function CustomerLayout({ children, onLocationUpdate }: CustomerLayoutPro
         </div>
 
         <div className="cst-header-right">
-          <button
-            type="button"
-            className="rst-notif-btn"
-            title="Notifications"
-            onClick={() => {
-              const el = document.getElementById("customer-notifications-section");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }}
-          >
-            🔔
-            {unreadCount > 0 && <span className="rst-notif-count">{unreadCount}</span>}
-          </button>
+          <NotificationBellDropdown role="Customer" />
 
           <div className="rst-user-info">
             <span className="rst-user-greeting">Hi, {user?.fullName?.split(" ")[0]}</span>

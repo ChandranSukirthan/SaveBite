@@ -651,6 +651,23 @@ public class DeliveryController : ControllerBase
                     assignedDelivery.OrderId,
                     assignedDelivery.Id);
             }
+
+            if (!string.IsNullOrEmpty(assignedDelivery.DeliveryPersonId))
+            {
+                var dp = await _deliveryPersons
+                    .Find(x => x.Id == assignedDelivery.DeliveryPersonId)
+                    .FirstOrDefaultAsync();
+                if (dp != null && !string.IsNullOrEmpty(dp.UserId))
+                {
+                    await _notificationService.CreateAsync(
+                        dp.UserId,
+                        "Driver Assigned",
+                        "You have been assigned a new delivery request.",
+                        NotificationType.DriverAssigned,
+                        assignedDelivery.OrderId,
+                        assignedDelivery.Id);
+                }
+            }
         }
 
         return Ok(new
@@ -978,6 +995,23 @@ public class DeliveryController : ControllerBase
                     NotificationType.DriverAssigned,
                     assignedDelivery.OrderId,
                     assignedDelivery.Id);
+            }
+
+            if (!string.IsNullOrEmpty(assignedDelivery.DeliveryPersonId))
+            {
+                var dp = await _deliveryPersons
+                    .Find(x => x.Id == assignedDelivery.DeliveryPersonId)
+                    .FirstOrDefaultAsync();
+                if (dp != null && !string.IsNullOrEmpty(dp.UserId))
+                {
+                    await _notificationService.CreateAsync(
+                        dp.UserId,
+                        "Driver Assigned",
+                        "You have been assigned a new delivery request.",
+                        NotificationType.DriverAssigned,
+                        assignedDelivery.OrderId,
+                        assignedDelivery.Id);
+                }
             }
         }
 

@@ -53,6 +53,29 @@ public class NotificationController : ControllerBase
         return Ok(notifications);
     }
 
+    [HttpPatch("read-all")]
+    public async Task<IActionResult> MarkAllAsRead()
+    {
+        var userId =
+            User.FindFirstValue(
+                ClaimTypes.NameIdentifier);
+
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var count =
+            await _notificationService
+                .MarkAllAsReadAsync(userId);
+
+        return Ok(new
+        {
+            message = "All notifications marked as read.",
+            count
+        });
+    }
+
     [HttpPatch("{id}/read")]
     public async Task<IActionResult>
         MarkAsRead(string id)

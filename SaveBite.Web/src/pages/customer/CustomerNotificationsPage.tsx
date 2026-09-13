@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { RestaurantLayout } from "../../components/layout/RestaurantLayout";
+import { CustomerLayout } from "../../components/layout/CustomerLayout";
 import {
   getNotifications,
   markNotificationRead,
@@ -27,7 +27,7 @@ function formatDateTime(dateStr: string): string {
   }
 }
 
-export function RestaurantNotificationsPage() {
+export function CustomerNotificationsPage() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [loading, setLoading] = useState(true);
@@ -39,7 +39,7 @@ export function RestaurantNotificationsPage() {
       const data = await getNotifications(50);
       setNotifications(data);
     } catch (err) {
-      console.error("Failed to load notifications:", err);
+      console.error("Failed to load customer notifications:", err);
     } finally {
       setLoading(false);
     }
@@ -76,7 +76,7 @@ export function RestaurantNotificationsPage() {
         prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
       );
     } catch (err) {
-      console.error("Mark read error:", err);
+      console.error("Failed to mark as read:", err);
     }
   };
 
@@ -89,40 +89,43 @@ export function RestaurantNotificationsPage() {
     }
   };
 
+  const unreadTotal = notifications.filter((n) => !n.isRead).length;
+
   const displayedNotifications =
     filter === "unread"
       ? notifications.filter((n) => !n.isRead)
       : notifications;
 
-  const unreadTotal = notifications.filter((n) => !n.isRead).length;
-
   return (
-    <RestaurantLayout>
+    <CustomerLayout>
       <div className="rst-dashboard">
+        {/* PAGE HEADER */}
         <div className="rst-page-header">
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-              <span className="rst-portal-pill">🍳 KITCHEN DISPATCH</span>
+              <span className="fd-badge">🔔 REAL-TIME DISPATCH</span>
               {unreadTotal > 0 && (
                 <span className="rst-nav-badge">{unreadTotal} unread</span>
               )}
             </div>
-            <h1 className="rst-page-title">Notification Center</h1>
+            <h1 className="rst-page-title">Customer Notification Center</h1>
             <p className="rst-page-subtitle">
-              Live updates regarding order creation, pickup status, and delivery person assignments.
+              Live updates on kitchen prep, autonomous driver routing, and food rescue order milestones.
             </p>
           </div>
 
           <div className="rst-page-actions">
             <button
-              onClick={() => setFilter("all")}
+              type="button"
               className={`rst-btn-tab ${filter === "all" ? "rst-btn-tab--active" : ""}`}
+              onClick={() => setFilter("all")}
             >
               All ({notifications.length})
             </button>
             <button
-              onClick={() => setFilter("unread")}
+              type="button"
               className={`rst-btn-tab ${filter === "unread" ? "rst-btn-tab--active" : ""}`}
+              onClick={() => setFilter("unread")}
             >
               Unread ({unreadTotal})
             </button>
@@ -145,26 +148,37 @@ export function RestaurantNotificationsPage() {
           </div>
         </div>
 
+        {/* NOTIFICATIONS CARD */}
         <div className="rst-card">
           {loading ? (
-            <p className="rst-empty-text">Loading notifications...</p>
+            <div className="rst-empty-state">
+              <span style={{ fontSize: "32px" }}>⏳</span>
+              <p>Loading notification feed...</p>
+            </div>
           ) : displayedNotifications.length === 0 ? (
             <div className="rst-empty-state">
-              <span style={{ fontSize: "36px" }}>
+              <span style={{ fontSize: "38px" }}>
                 {filter === "unread" ? "✨" : "📭"}
               </span>
-              <p style={{ fontWeight: 700, margin: "8px 0 4px" }}>
-                {filter === "unread" ? "No unread notifications" : "No notifications yet"}
+              <p style={{ fontWeight: 800, margin: "12px 0 4px", fontSize: "16px", color: "var(--black)" }}>
+                {filter === "unread"
+                  ? "All caught up! No unread notifications."
+                  : "No notifications recorded yet."}
               </p>
               <p className="rst-empty-text">
-                Incoming orders and delivery notifications will appear here.
+                When restaurants confirm your orders or drivers are dispatched, real-time alerts will appear here.
               </p>
+              <div style={{ marginTop: "16px" }}>
+                <Link to="/customer/food" className="rst-btn-solid" style={{ textDecoration: "none" }}>
+                  Explore Surplus Food
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="rst-notif-full-list">
               {displayedNotifications.map((notif) => {
                 const color = getNotificationTypeColor(notif.type);
-                const deepLink = getNotificationDeepLink(notif, "RestaurantOwner");
+                const deepLink = getNotificationDeepLink(notif, "Customer");
 
                 return (
                   <div
@@ -187,6 +201,7 @@ export function RestaurantNotificationsPage() {
                           <span>{getNotificationIcon(notif.type)}</span>
                           <span>{notif.type}</span>
                         </span>
+
                         <h4 className="rst-notif-full-title">{notif.title}</h4>
                         {!notif.isRead && <span className="rst-unread-dot" />}
                       </div>
@@ -197,17 +212,22 @@ export function RestaurantNotificationsPage() {
                         </span>
                         {!notif.isRead && (
                           <button
+                            type="button"
+                            className="rst-mark-read-btn"
                             onClick={() => handleMarkAsRead(notif.id)}
-                            className="rst-btn-mark-read"
+                            title="Mark as read"
                           >
-                            Mark as read
+                            Mark Read
                           </button>
                         )}
                       </div>
                     </div>
 
-                    <p className="rst-notif-full-msg">{notif.message}</p>
+                    <p className="rst-notif-msg" style={{ margin: "8px 0 12px", fontSize: "13.5px" }}>
+                      {notif.message}
+                    </p>
 
+                    {/* DEEP LINK TO RELATED ORDER */}
                     {notif.orderId && (
                       <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "4px" }}>
                         <span className="rst-code">Order #{notif.orderId.slice(-8)}</span>
@@ -227,7 +247,7 @@ export function RestaurantNotificationsPage() {
                               if (!notif.isRead) handleMarkAsRead(notif.id);
                             }}
                           >
-                            📦 View Orders ➔
+                            🛰️ Live Tracking Map ➔
                           </Link>
                         )}
                       </div>
@@ -239,9 +259,9 @@ export function RestaurantNotificationsPage() {
           )}
         </div>
       </div>
-    </RestaurantLayout>
+    </CustomerLayout>
   );
 }
 
-export default RestaurantNotificationsPage;
+export default CustomerNotificationsPage;
 

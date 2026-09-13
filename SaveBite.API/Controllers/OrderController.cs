@@ -271,6 +271,16 @@ public class OrderController : ControllerBase
                 order.Id);
         }
 
+        if (!string.IsNullOrEmpty(customer.UserId))
+        {
+            await _notificationService.CreateAsync(
+                customer.UserId,
+                "Order Placed",
+                "Your surplus food order has been placed and received by the kitchen.",
+                NotificationType.OrderCreated,
+                order.Id);
+        }
+
         return CreatedAtAction(
             nameof(GetOrderById),
             new { id = order.Id },

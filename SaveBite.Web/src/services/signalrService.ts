@@ -38,6 +38,7 @@ export interface DriverLocationUpdatedEvent {
 
 export interface NotificationReceivedEvent {
   id: string;
+  userId?: string;
   title: string;
   message: string;
   type: string;

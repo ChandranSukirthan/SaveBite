@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getRestaurantProfile } from "../../services/profileService";
 import { getNotifications } from "../../services/restaurantService";
+import { NotificationBellDropdown } from "../notifications/NotificationBellDropdown";
 import type { RestaurantProfile } from "../../types/profile";
 
 interface RestaurantLayoutProps {
@@ -81,14 +82,7 @@ export function RestaurantLayout({ children }: RestaurantLayoutProps) {
         </div>
 
         <div className="rst-header-right">
-          <Link
-            to="/restaurant/notifications"
-            className="rst-notif-btn"
-            title="Notifications"
-          >
-            🔔
-            {unreadCount > 0 && <span className="rst-notif-count">{unreadCount}</span>}
-          </Link>
+          <NotificationBellDropdown role="RestaurantOwner" />
 
           <div className="rst-user-info">
             <span className="rst-user-greeting">

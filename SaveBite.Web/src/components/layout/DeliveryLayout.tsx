@@ -6,6 +6,7 @@ import {
   updateDeliveryAvailability,
   updateDeliveryLocation,
 } from "../../services/deliveryService";
+import { NotificationBellDropdown } from "../notifications/NotificationBellDropdown";
 import type { DeliveryPersonProfile } from "../../types/profile";
 
 interface DeliveryLayoutProps {
@@ -112,6 +113,7 @@ export function DeliveryLayout({
   const navLinks = [
     { label: "Dashboard", path: "/delivery/dashboard", icon: "🚴" },
     { label: "Requests", path: "/delivery/requests", icon: "⚡" },
+    { label: "Notifications", path: "/delivery/notifications", icon: "🔔" },
     { label: "Rider Profile", path: "/delivery/profile", icon: "👤" },
     { label: "Vehicle Setup", path: "/delivery/profile-setup", icon: "⚙️" },
   ];
@@ -180,6 +182,8 @@ export function DeliveryLayout({
         </div>
 
         <div className="rst-header-right">
+          <NotificationBellDropdown role="DeliveryPerson" />
+
           <div className="rst-user-info">
             <span className="rst-user-greeting">
               Hi, <strong>{user?.fullName?.split(" ")[0]}</strong>

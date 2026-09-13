@@ -101,4 +101,23 @@ public class NotificationService
 
         return result.ModifiedCount > 0;
     }
+
+    public async Task<long> MarkAllAsReadAsync(
+        string userId)
+    {
+        var update =
+            Builders<Notification>.Update
+                .Set(
+                    x => x.IsRead,
+                    true);
+
+        var result =
+            await _notifications.UpdateManyAsync(
+                x =>
+                    x.UserId == userId &&
+                    !x.IsRead,
+                update);
+
+        return result.ModifiedCount;
+    }
 }

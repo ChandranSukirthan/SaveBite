@@ -27,6 +27,8 @@ import { OrderTrackingPage } from "./pages/customer/OrderTrackingPage";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
 import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
 import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
+import { CustomerNotificationsPage } from "./pages/customer/CustomerNotificationsPage";
+import { DeliveryNotificationsPage } from "./pages/delivery/DeliveryNotificationsPage";
 import FoodListPage from "./pages/restaurant/FoodListPage";
 import AddFoodPage from "./pages/restaurant/AddFoodPage";
 import EditFoodPage from "./pages/restaurant/EditFoodPage";
@@ -358,6 +360,20 @@ function App() {
           />
 
           <Route
+            path="/customer/notifications"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <CustomerNotificationsPage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
             path="/customer/explore"
             element={<Navigate to="/customer/food" replace />}
           />
@@ -371,6 +387,20 @@ function App() {
               >
                 <ProfileGate>
                   <DeliveryDashboard />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/delivery/notifications"
+            element={
+              <RoleProtectedRoute
+                allowedRole="DeliveryPerson"
+                fallbackLogin="/delivery/login"
+              >
+                <ProfileGate>
+                  <DeliveryNotificationsPage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }
