@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getAdminOrders, type AdminOrder } from "../../services/adminService";
+import { Pagination } from "../../components/common/Pagination";
 
 export function AdminOrdersPage() {
   const [orders, setOrders] = useState<AdminOrder[]>([]);
@@ -7,6 +8,8 @@ export function AdminOrdersPage() {
   const [activeStatus, setActiveStatus] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   async function loadOrders() {
     try {
@@ -34,6 +37,11 @@ export function AdminOrdersPage() {
     return <span className={`adm-status-pill adm-status-${s}`}>{status}</span>;
   };
 
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return orders.slice(start, start + pageSize);
+  }, [orders, currentPage, pageSize]);
+
   return (
     <div className="adm-orders-page">
       <div className="adm-page-header">
@@ -52,7 +60,7 @@ export function AdminOrdersPage() {
           {["all", "Pending", "Confirmed", "Preparing", "ReadyForPickup", "OutForDelivery", "Delivered", "Cancelled"].map((s) => (
             <button
               key={s}
-              onClick={() => setActiveStatus(s)}
+              onClick={() => { setActiveStatus(s); setCurrentPage(1); }}
               className={`adm-tab-btn ${activeStatus === s ? "active" : ""}`}
             >
               {s === "all" ? "All Orders" : s}
@@ -64,7 +72,7 @@ export function AdminOrdersPage() {
           <span className="adm-search-icon">🔍</span>
           <input
             type="text"
-            placeholder="Search Order ID, food, customer, restaurant..."
+            placeholder="Search by order ID, customer, restaurant, or food..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="adm-search-input"
@@ -88,7 +96,7 @@ export function AdminOrdersPage() {
       {loading ? (
         <div className="adm-loading-state">
           <div className="adm-spinner" />
-          <p>Loading order feed...</p>
+          <p>Loading order data...</p>
         </div>
       ) : orders.length === 0 ? (
         <div className="adm-card adm-empty-state">
@@ -97,7 +105,7 @@ export function AdminOrdersPage() {
           <p>
             {searchQuery
               ? `No orders matching "${searchQuery}".`
-              : "No orders matching the selected status filter."}
+              : "No orders found for the selected status."}
           </p>
         </div>
       ) : (
@@ -109,15 +117,15 @@ export function AdminOrdersPage() {
                   <th>Order ID</th>
                   <th>Customer</th>
                   <th>Restaurant</th>
-                  <th>Surplus Item</th>
-                  <th>Amount</th>
+                  <th>Item</th>
+                  <th>Total</th>
                   <th>Status</th>
                   <th>Time</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
+                {paginatedOrders.map((o) => (
                   <tr key={o.id}>
                     <td>
                       <span className="adm-id-code" title={o.id}>
@@ -158,6 +166,18 @@ export function AdminOrdersPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={orders.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+            itemLabel="orders"
+            className="adm-pagination-bar"
+          />
         </div>
       )}
 

@@ -3,6 +3,8 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import type { UserRole } from "../../types/auth";
 
+import { LoadingSpinner } from "../common/LoadingSpinner";
+
 interface RoleProtectedRouteProps {
   children: ReactNode;
   allowedRole: UserRole;
@@ -24,13 +26,9 @@ export function RoleProtectedRoute({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        fontFamily: "var(--font-family, sans-serif)",
         background: "var(--white, #ffffff)",
       }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "2rem", marginBottom: "12px" }}>🌱</div>
-          <p style={{ color: "#888888", fontWeight: 600 }}>Verifying credentials...</p>
-        </div>
+        <LoadingSpinner size="lg" label="Verifying credentials..." />
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getCustomerProfile } from "../../services/profileService";
 import { NotificationBellDropdown } from "../notifications/NotificationBellDropdown";
+import { MobileBottomNav } from "./MobileBottomNav";
 import type { CustomerProfile } from "../../types/profile";
 
 interface CustomerLayoutProps {
@@ -198,6 +199,9 @@ export function CustomerLayout({ children, onLocationUpdate }: CustomerLayoutPro
         {/* MAIN CONTENT AREA */}
         <main className="cst-main">{children}</main>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <MobileBottomNav role="Customer" />
     </div>
   );
 }

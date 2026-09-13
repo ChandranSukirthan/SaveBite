@@ -8,15 +8,20 @@ import type {
 import type { Order } from "../types/restaurant";
 
 export async function searchNearbyFood(
-  filter: FoodSearchFilter
+  filter: FoodSearchFilter,
+  signal?: AbortSignal
 ): Promise<DiscoveredFoodItem[]> {
   try {
     const response = await api.post<DiscoveredFoodItem[]>(
       "/food-discovery/search",
-      filter
+      filter,
+      { signal }
     );
     return response.data || [];
   } catch (err: any) {
+    if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+      throw err;
+    }
     if (err.response?.status === 404) return [];
     throw err;
   }

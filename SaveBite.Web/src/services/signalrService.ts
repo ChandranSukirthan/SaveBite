@@ -59,10 +59,25 @@ class SignalRService {
   private trackedDeliveryGroups: Set<string> = new Set();
   private stateChangeListeners: Set<(state: ConnectionState) => void> = new Set();
 
+  // Centralized listener registries to prevent memory leaks and duplicate handler registrations
+  private orderStatusListeners: Set<(data: OrderStatusUpdatedEvent) => void> = new Set();
+  private deliveryStatusListeners: Set<(data: DeliveryStatusUpdatedEvent) => void> = new Set();
+  private driverAssignedListeners: Set<(data: DriverAssignedEvent) => void> = new Set();
+  private driverLocationListeners: Set<(data: DriverLocationUpdatedEvent) => void> = new Set();
+  private notificationListeners: Set<(data: NotificationReceivedEvent) => void> = new Set();
+
   private getHubUrl(): string {
     const apiBase =
       import.meta.env.VITE_API_BASE_URL || "http://localhost:5000";
     return `${apiBase.replace(/\/$/, "")}/hubs/delivery`;
+  }
+
+  private getToken(): string {
+    return (
+      localStorage.getItem("savebite_token") ||
+      localStorage.getItem("token") ||
+      ""
+    );
   }
 
   private mapState(hubState: HubConnectionState): ConnectionState {
@@ -80,7 +95,13 @@ class SignalRService {
 
   private notifyStateChange() {
     const currentState = this.getConnectionState();
-    this.stateChangeListeners.forEach((listener) => listener(currentState));
+    this.stateChangeListeners.forEach((listener) => {
+      try {
+        listener(currentState);
+      } catch (e) {
+        console.error("Error in SignalR state listener:", e);
+      }
+    });
   }
 
   public getConnectionState(): ConnectionState {
@@ -98,8 +119,60 @@ class SignalRService {
     };
   }
 
+  private registerHubHandlers(conn: HubConnection) {
+    conn.on("OrderStatusUpdated", (data: OrderStatusUpdatedEvent) => {
+      this.orderStatusListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in OrderStatusUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("DeliveryStatusUpdated", (data: DeliveryStatusUpdatedEvent) => {
+      this.deliveryStatusListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in DeliveryStatusUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("DriverAssigned", (data: DriverAssignedEvent) => {
+      this.driverAssignedListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in DriverAssigned listener:", e);
+        }
+      });
+    });
+
+    conn.on("DriverLocationUpdated", (data: DriverLocationUpdatedEvent) => {
+      this.driverLocationListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in DriverLocationUpdated listener:", e);
+        }
+      });
+    });
+
+    conn.on("NotificationReceived", (data: NotificationReceivedEvent) => {
+      this.notificationListeners.forEach((cb) => {
+        try {
+          cb(data);
+        } catch (e) {
+          console.error("Error in NotificationReceived listener:", e);
+        }
+      });
+    });
+  }
+
   public async startConnection(): Promise<void> {
-    const token = localStorage.getItem("token");
+    const token = this.getToken();
     if (!token) {
       return;
     }
@@ -124,13 +197,16 @@ class SignalRService {
 
     this.connection = new HubConnectionBuilder()
       .withUrl(hubUrl, {
-        accessTokenFactory: () => localStorage.getItem("token") || "",
+        accessTokenFactory: () => this.getToken(),
         transport:
           HttpTransportType.WebSockets | HttpTransportType.LongPolling,
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000])
       .configureLogging(LogLevel.Warning)
       .build();
+
+    // Register fanout event dispatchers on the single connection
+    this.registerHubHandlers(this.connection);
 
     this.connection.onreconnecting(() => {
       this.notifyStateChange();
@@ -235,60 +311,50 @@ class SignalRService {
     }
   }
 
-  // --- Event Subscriptions ---
+  // --- Efficient Event Subscriptions ---
 
   public onOrderStatusUpdated(
     callback: (data: OrderStatusUpdatedEvent) => void
   ): () => void {
-    const handler = (data: OrderStatusUpdatedEvent) => callback(data);
-    this.connection?.on("OrderStatusUpdated", handler);
-
+    this.orderStatusListeners.add(callback);
     return () => {
-      this.connection?.off("OrderStatusUpdated", handler);
+      this.orderStatusListeners.delete(callback);
     };
   }
 
   public onDeliveryStatusUpdated(
     callback: (data: DeliveryStatusUpdatedEvent) => void
   ): () => void {
-    const handler = (data: DeliveryStatusUpdatedEvent) => callback(data);
-    this.connection?.on("DeliveryStatusUpdated", handler);
-
+    this.deliveryStatusListeners.add(callback);
     return () => {
-      this.connection?.off("DeliveryStatusUpdated", handler);
+      this.deliveryStatusListeners.delete(callback);
     };
   }
 
   public onDriverAssigned(
     callback: (data: DriverAssignedEvent) => void
   ): () => void {
-    const handler = (data: DriverAssignedEvent) => callback(data);
-    this.connection?.on("DriverAssigned", handler);
-
+    this.driverAssignedListeners.add(callback);
     return () => {
-      this.connection?.off("DriverAssigned", handler);
+      this.driverAssignedListeners.delete(callback);
     };
   }
 
   public onDriverLocationUpdated(
     callback: (data: DriverLocationUpdatedEvent) => void
   ): () => void {
-    const handler = (data: DriverLocationUpdatedEvent) => callback(data);
-    this.connection?.on("DriverLocationUpdated", handler);
-
+    this.driverLocationListeners.add(callback);
     return () => {
-      this.connection?.off("DriverLocationUpdated", handler);
+      this.driverLocationListeners.delete(callback);
     };
   }
 
   public onNotificationReceived(
     callback: (data: NotificationReceivedEvent) => void
   ): () => void {
-    const handler = (data: NotificationReceivedEvent) => callback(data);
-    this.connection?.on("NotificationReceived", handler);
-
+    this.notificationListeners.add(callback);
     return () => {
-      this.connection?.off("NotificationReceived", handler);
+      this.notificationListeners.delete(callback);
     };
   }
 }

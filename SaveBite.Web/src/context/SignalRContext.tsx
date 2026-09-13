@@ -4,6 +4,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
 } from "react";
 import { useAuth } from "../hooks/useAuth";
 import {
@@ -93,7 +94,7 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({
     });
 
     return unsub;
-  }, [connectionState]);
+  }, []);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -142,20 +143,34 @@ export const SignalRProvider: React.FC<{ children: React.ReactNode }> = ({
     []
   );
 
+  // Memoize context value to prevent consumer re-render cascading
+  const contextValue = useMemo<SignalRContextType>(
+    () => ({
+      connectionState,
+      joinDeliveryGroup,
+      leaveDeliveryGroup,
+      onOrderStatusUpdated,
+      onDeliveryStatusUpdated,
+      onDriverAssigned,
+      onDriverLocationUpdated,
+      onNotificationReceived,
+      dismissToast,
+    }),
+    [
+      connectionState,
+      joinDeliveryGroup,
+      leaveDeliveryGroup,
+      onOrderStatusUpdated,
+      onDeliveryStatusUpdated,
+      onDriverAssigned,
+      onDriverLocationUpdated,
+      onNotificationReceived,
+      dismissToast,
+    ]
+  );
+
   return (
-    <SignalRContext.Provider
-      value={{
-        connectionState,
-        joinDeliveryGroup,
-        leaveDeliveryGroup,
-        onOrderStatusUpdated,
-        onDeliveryStatusUpdated,
-        onDriverAssigned,
-        onDriverLocationUpdated,
-        onNotificationReceived,
-        dismissToast,
-      }}
-    >
+    <SignalRContext.Provider value={contextValue}>
       {children}
 
       {/* GLOBAL FLOATING TOAST NOTIFICATION CONTAINER */}

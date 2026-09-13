@@ -7,6 +7,7 @@ import {
   updateDeliveryLocation,
 } from "../../services/deliveryService";
 import { NotificationBellDropdown } from "../notifications/NotificationBellDropdown";
+import { MobileBottomNav } from "./MobileBottomNav";
 import type { DeliveryPersonProfile } from "../../types/profile";
 
 interface DeliveryLayoutProps {
@@ -272,6 +273,9 @@ export function DeliveryLayout({
         {/* MAIN CONTENT AREA */}
         <main className="rst-main">{children}</main>
       </div>
+
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <MobileBottomNav role="DeliveryPerson" />
     </div>
   );
 }

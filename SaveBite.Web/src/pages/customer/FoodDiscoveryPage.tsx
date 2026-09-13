@@ -1,17 +1,18 @@
-import { useEffect, useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { CustomerLayout } from "../../components/layout/CustomerLayout";
 import { getCustomerProfile } from "../../services/profileService";
 import { searchNearbyFood } from "../../services/customerService";
 import type { CustomerProfile } from "../../types/profile";
 import type { DiscoveredFoodItem, FoodSortOption } from "../../types/customer";
-import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
 import { RestaurantDetailsModal } from "../../components/customer/RestaurantDetailsModal";
 import { FoodDiscoveryMap } from "../../components/customer/FoodDiscoveryMap";
 import { FoodCardSkeleton } from "../../components/common/Skeleton";
 import { NoFoodEmptyState } from "../../components/common/EmptyState";
 import { ErrorState } from "../../components/common/ErrorState";
+import { Pagination } from "../../components/common/Pagination";
+import { FoodCard, getCategoryIcon } from "../../components/food/FoodCard";
+import { useDebounce } from "../../hooks/useDebounce";
 
 const CATEGORIES = [
   "All",
@@ -32,18 +33,26 @@ export function FoodDiscoveryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter & Search state
-  const [searchQuery, setSearchQuery] = useState("");
+  // Search input and debounced search query (350ms)
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearchQuery = useDebounce(searchInput, 350);
+
+  // Filter & Pagination state
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [radiusKm, setRadiusKm] = useState(15);
   const [maxPrice, setMaxPrice] = useState<number>(30);
   const [sortBy, setSortBy] = useState<FoodSortOption>("distance");
   const [viewMode, setViewMode] = useState<"grid" | "map">("grid");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(6);
 
   // Modals state
   const [reserveItem, setReserveItem] = useState<DiscoveredFoodItem | null>(null);
   const [selectedRestaurantId, setSelectedRestaurantId] = useState<string | null>(null);
   const [orderSuccessMsg, setOrderSuccessMsg] = useState<string | null>(null);
+
+  // AbortController ref for in-flight request cancellation
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Effective customer coordinates
   const customerLat = profile?.location?.coordinates?.[1] || 40.7135;
@@ -66,40 +75,66 @@ export function FoodDiscoveryPage() {
       });
   }, []);
 
-  // Fetch foods from C# API
-  const fetchSurplusFood = async () => {
+  // Fetch foods from C# API with request cancellation
+  const fetchSurplusFood = useCallback(async () => {
+    // Abort any prior pending in-flight search request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setError(null);
+
     try {
-      const items = await searchNearbyFood({
-        latitude: customerLat,
-        longitude: customerLng,
-        radiusInKilometers: radiusKm,
-        category: selectedCategory === "All" ? undefined : selectedCategory,
-        maxPrice: maxPrice > 0 ? maxPrice : undefined,
-      });
+      const items = await searchNearbyFood(
+        {
+          latitude: customerLat,
+          longitude: customerLng,
+          radiusInKilometers: radiusKm,
+          category: selectedCategory === "All" ? undefined : selectedCategory,
+          maxPrice: maxPrice > 0 ? maxPrice : undefined,
+        },
+        controller.signal
+      );
       setAllFoods(items);
+      setCurrentPage(1);
     } catch (err: any) {
+      // Ignore cancellations cleanly
+      if (err.name === "CanceledError" || err.code === "ERR_CANCELED") {
+        return;
+      }
       setError(
         err.response?.data?.message ||
           "Failed to discover nearby food. Please ensure backend is running."
       );
     } finally {
-      setLoading(false);
+      if (abortControllerRef.current === controller) {
+        setLoading(false);
+      }
     }
-  };
+  }, [customerLat, customerLng, radiusKm, selectedCategory, maxPrice]);
 
   useEffect(() => {
     fetchSurplusFood();
-  }, [customerLat, customerLng, radiusKm, selectedCategory, maxPrice]);
 
-  // Client-side text search & sorting
+    return () => {
+      // Cancel pending request on unmount
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchSurplusFood]);
+
+  // Client-side text search & sorting (memoized)
   const filteredAndSortedFoods = useMemo(() => {
     let result = [...allFoods];
 
-    // Search query filter (name, description, restaurantName)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+    // Search query filter (name, description, restaurantName, category)
+    if (debouncedSearchQuery.trim()) {
+      const q = debouncedSearchQuery.toLowerCase().trim();
       result = result.filter(
         (f) =>
           f.name.toLowerCase().includes(q) ||
@@ -131,35 +166,29 @@ export function FoodDiscoveryPage() {
     });
 
     return result;
-  }, [allFoods, searchQuery, sortBy]);
+  }, [allFoods, debouncedSearchQuery, sortBy]);
 
-  const handleOrderCreated = () => {
+  // Sliced paginated foods for grid view
+  const paginatedFoods = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAndSortedFoods.slice(start, start + pageSize);
+  }, [filteredAndSortedFoods, currentPage, pageSize]);
+
+  // Stable handlers for memoized children
+  const handleReserve = useCallback((item: DiscoveredFoodItem) => {
+    setReserveItem(item);
+  }, []);
+
+  const handleSelectRestaurant = useCallback((restaurantId: string) => {
+    setSelectedRestaurantId(restaurantId);
+  }, []);
+
+  const handleOrderCreated = useCallback(() => {
     setOrderSuccessMsg("🎉 Portion successfully reserved! The kitchen is preparing it.");
     setReserveItem(null);
     fetchSurplusFood();
     setTimeout(() => setOrderSuccessMsg(null), 6000);
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case "Bakery":
-        return "🥐";
-      case "Prepared Meals":
-        return "🍲";
-      case "Fresh Produce":
-        return "🥦";
-      case "Groceries":
-        return "🥫";
-      case "Desserts":
-        return "🍰";
-      case "Dairy & Drinks":
-        return "🥛";
-      case "Beverages":
-        return "☕";
-      default:
-        return "🍽️";
-    }
-  };
+  }, [fetchSurplusFood]);
 
   return (
     <CustomerLayout>
@@ -202,21 +231,22 @@ export function FoodDiscoveryPage() {
 
         {/* Filter & Search Bar Toolbar */}
         <div className="fd-controls-bar">
-          {/* Search Input */}
+          {/* Debounced Search Input */}
           <div className="fd-search-box">
             <span className="fd-search-icon">🔍</span>
             <input
               type="text"
               placeholder="Search by food name, bakery, chef, or ingredients..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="fd-search-input"
             />
-            {searchQuery && (
+            {searchInput && (
               <button
                 type="button"
                 className="fd-search-clear"
-                onClick={() => setSearchQuery("")}
+                onClick={() => setSearchInput("")}
+                title="Clear search"
               >
                 ✕
               </button>
@@ -345,8 +375,8 @@ export function FoodDiscoveryPage() {
                 }}
                 radiusKm={radiusKm}
                 foodItems={filteredAndSortedFoods}
-                onSelectFood={(item) => setReserveItem(item)}
-                onSelectRestaurant={(restId) => setSelectedRestaurantId(restId)}
+                onSelectFood={handleReserve}
+                onSelectRestaurant={handleSelectRestaurant}
               />
             ) : (
               <>
@@ -355,84 +385,35 @@ export function FoodDiscoveryPage() {
                     onExpandRadius={() => setRadiusKm(50)}
                     onResetFilters={() => {
                       setSelectedCategory("All");
-                      setSearchQuery("");
+                      setSearchInput("");
                       setMaxPrice(50);
                     }}
                   />
                 ) : (
-                  <div className="fd-grid">
-                    {filteredAndSortedFoods.map((food) => (
-                      <div key={food.id} className="fd-food-card">
-                        {/* Food Card Top Bar */}
-                        <div className="fd-card-top">
-                          <span className="fd-category-pill">
-                            {getCategoryIcon(food.category)} {food.category}
-                          </span>
-                          <span className="fd-distance-pill">
-                            📍 {food.distanceInKilometers} km
-                          </span>
-                        </div>
+                  <>
+                    <div className="fd-grid">
+                      {paginatedFoods.map((food) => (
+                        <FoodCard
+                          key={food.id}
+                          food={food}
+                          onReserve={handleReserve}
+                          onSelectRestaurant={handleSelectRestaurant}
+                        />
+                      ))}
+                    </div>
 
-                        {/* Title & Description */}
-                        <Link to={`/customer/food/${food.id}`} className="fd-card-title-link">
-                          <h3 className="fd-card-title">{food.name}</h3>
-                        </Link>
-                        <p className="fd-card-desc">{food.description}</p>
-
-                        {/* Restaurant Info (Clickable) */}
-                        <div
-                          className="fd-restaurant-box"
-                          onClick={() =>
-                            food.restaurant?.id &&
-                            setSelectedRestaurantId(food.restaurant.id)
-                          }
-                          title="Click to view restaurant details & address"
-                        >
-                          <span className="fd-rest-icon">🏪</span>
-                          <div className="fd-rest-details">
-                            <span className="fd-rest-name">
-                              {food.restaurant?.restaurantName || "Partner Restaurant"}
-                            </span>
-                            <span className="fd-rest-addr">
-                              {food.restaurant?.address}
-                            </span>
-                          </div>
-                          <span className="fd-rest-arrow">ℹ️</span>
-                        </div>
-
-                        {/* Availability & Countdown Timer */}
-                        <div className="fd-timer-row">
-                          <span className="fd-timer-label">⏰ Pickup Window:</span>
-                          <CountdownTimer availableUntil={food.availableUntil} />
-                        </div>
-
-                        {/* Card Footer: Price & Reservation CTA */}
-                        <div className="fd-card-footer">
-                          <div className="fd-price-stack">
-                            <span className="fd-price-val">${food.price.toFixed(2)}</span>
-                            <span className="fd-qty-pill">
-                              {food.quantity} left
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", gap: "6px" }}>
-                            <Link
-                              to={`/customer/food/${food.id}`}
-                              className="fd-details-btn"
-                            >
-                              Details
-                            </Link>
-                            <button
-                              type="button"
-                              className="fd-reserve-cta"
-                              onClick={() => setReserveItem(food)}
-                            >
-                              Reserve ➔
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    {/* Pagination Controls */}
+                    <Pagination
+                      currentPage={currentPage}
+                      totalItems={filteredAndSortedFoods.length}
+                      pageSize={pageSize}
+                      onPageChange={setCurrentPage}
+                      onPageSizeChange={setPageSize}
+                      pageSizeOptions={[6, 12, 24]}
+                      itemLabel="meals"
+                      className="fd-pagination-container"
+                    />
+                  </>
                 )}
               </>
             )}
@@ -450,15 +431,17 @@ export function FoodDiscoveryPage() {
         />
       )}
 
-      {/* Restaurant Details Modal */}
+      {/* Restaurant Info & Location Modal */}
       {selectedRestaurantId && (
         <RestaurantDetailsModal
           restaurantId={selectedRestaurantId}
+          availableFoods={filteredAndSortedFoods}
+          onSelectFood={handleReserve}
           onClose={() => setSelectedRestaurantId(null)}
-          availableFoods={allFoods}
-          onSelectFood={(item) => setReserveItem(item)}
         />
       )}
     </CustomerLayout>
   );
 }
+
+export default FoodDiscoveryPage;

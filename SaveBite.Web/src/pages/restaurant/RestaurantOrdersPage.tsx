@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { RestaurantLayout } from "../../components/layout/RestaurantLayout";
 import {
   getRestaurantOrders,
@@ -7,6 +7,7 @@ import {
 import type { Order, OrderStatus } from "../../types/restaurant";
 import { OrderDetailsModal } from "../../components/orders/OrderDetailsModal";
 import { useSignalR } from "../../context/SignalRContext";
+import { Pagination } from "../../components/common/Pagination";
 
 export function RestaurantOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -15,6 +16,8 @@ export function RestaurantOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(8);
 
   async function loadOrders() {
     try {
@@ -104,6 +107,11 @@ export function RestaurantOrdersPage() {
 
     return matchesSearch && matchesStatus;
   });
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
 
   const pendingCount = orders.filter((o) => o.status === "Pending").length;
   const preparingCount = orders.filter((o) => o.status === "Preparing" || o.status === "Confirmed").length;
@@ -235,7 +243,8 @@ export function RestaurantOrdersPage() {
               </p>
             </div>
           ) : (
-            <div className="rst-table-wrapper">
+            <>
+              <div className="rst-table-wrapper">
               <table className="rst-table">
                 <thead>
                   <tr>
@@ -249,7 +258,7 @@ export function RestaurantOrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.map((o) => (
+                  {paginatedOrders.map((o) => (
                     <tr key={o.id}>
                       <td>
                         <strong className="rst-code">#{o.id.slice(-8)}</strong>
@@ -344,6 +353,19 @@ export function RestaurantOrdersPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination Controls */}
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredOrders.length}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              pageSizeOptions={[8, 16, 24]}
+              itemLabel="orders"
+              className="rst-pagination-bar"
+            />
+          </>
           )}
         </div>
 

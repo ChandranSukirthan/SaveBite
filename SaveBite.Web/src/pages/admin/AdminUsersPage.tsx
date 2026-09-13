@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getAdminUsers, type AdminUser } from "../../services/adminService";
+import { Pagination } from "../../components/common/Pagination";
 
 export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -7,6 +8,8 @@ export function AdminUsersPage() {
   const [activeRole, setActiveRole] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   async function loadUsers() {
     try {
@@ -59,6 +62,11 @@ export function AdminUsersPage() {
     }
   };
 
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return users.slice(start, start + pageSize);
+  }, [users, currentPage, pageSize]);
+
   return (
     <div className="adm-users-page">
       <div className="adm-page-header">
@@ -75,31 +83,31 @@ export function AdminUsersPage() {
       <div className="adm-filter-toolbar">
         <div className="adm-tabs">
           <button
-            onClick={() => setActiveRole("all")}
+            onClick={() => { setActiveRole("all"); setCurrentPage(1); }}
             className={`adm-tab-btn ${activeRole === "all" ? "active" : ""}`}
           >
             All Users
           </button>
           <button
-            onClick={() => setActiveRole("Customer")}
+            onClick={() => { setActiveRole("Customer"); setCurrentPage(1); }}
             className={`adm-tab-btn ${activeRole === "Customer" ? "active" : ""}`}
           >
             Customers
           </button>
           <button
-            onClick={() => setActiveRole("RestaurantOwner")}
+            onClick={() => { setActiveRole("RestaurantOwner"); setCurrentPage(1); }}
             className={`adm-tab-btn ${activeRole === "RestaurantOwner" ? "active" : ""}`}
           >
             Restaurant Owners
           </button>
           <button
-            onClick={() => setActiveRole("DeliveryPerson")}
+            onClick={() => { setActiveRole("DeliveryPerson"); setCurrentPage(1); }}
             className={`adm-tab-btn ${activeRole === "DeliveryPerson" ? "active" : ""}`}
           >
             Couriers
           </button>
           <button
-            onClick={() => setActiveRole("Admin")}
+            onClick={() => { setActiveRole("Admin"); setCurrentPage(1); }}
             className={`adm-tab-btn ${activeRole === "Admin" ? "active" : ""}`}
           >
             Admins
@@ -160,7 +168,7 @@ export function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {paginatedUsers.map((u) => (
                   <tr key={u.id}>
                     <td>
                       <div className="adm-user-cell">
@@ -203,6 +211,18 @@ export function AdminUsersPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={users.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+            itemLabel="users"
+            className="adm-pagination-bar"
+          />
         </div>
       )}
 

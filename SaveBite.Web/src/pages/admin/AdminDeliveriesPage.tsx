@@ -1,11 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { getAdminDeliveries, type AdminDelivery } from "../../services/adminService";
+import { Pagination } from "../../components/common/Pagination";
 
 export function AdminDeliveriesPage() {
   const [deliveries, setDeliveries] = useState<AdminDelivery[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeStatus, setActiveStatus] = useState<string>("all");
   const [selectedDelivery, setSelectedDelivery] = useState<AdminDelivery | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
 
   async function loadDeliveries() {
     try {
@@ -28,6 +31,11 @@ export function AdminDeliveriesPage() {
     return <span className={`adm-status-pill adm-status-${s}`}>{status}</span>;
   };
 
+  const paginatedDeliveries = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return deliveries.slice(start, start + pageSize);
+  }, [deliveries, currentPage, pageSize]);
+
   return (
     <div className="adm-deliveries-page">
       <div className="adm-page-header">
@@ -46,7 +54,7 @@ export function AdminDeliveriesPage() {
           {["all", "Searching", "Assigned", "Accepted", "PickedUp", "InTransit", "Delivered", "Cancelled"].map((s) => (
             <button
               key={s}
-              onClick={() => setActiveStatus(s)}
+              onClick={() => { setActiveStatus(s); setCurrentPage(1); }}
               className={`adm-tab-btn ${activeStatus === s ? "active" : ""}`}
             >
               {s === "all" ? "All Deliveries" : s}
@@ -59,13 +67,13 @@ export function AdminDeliveriesPage() {
       {loading ? (
         <div className="adm-loading-state">
           <div className="adm-spinner" />
-          <p>Loading active deliveries...</p>
+          <p>Loading delivery stream...</p>
         </div>
       ) : deliveries.length === 0 ? (
         <div className="adm-card adm-empty-state">
-          <span className="adm-empty-icon">🛵</span>
-          <h3>No deliveries found</h3>
-          <p>There are no delivery dispatches matching the selected status filter.</p>
+          <span className="adm-empty-icon">🚴</span>
+          <h3>No delivery tasks found</h3>
+          <p>No dispatches matching the selected status filter.</p>
         </div>
       ) : (
         <div className="adm-card">
@@ -73,9 +81,9 @@ export function AdminDeliveriesPage() {
             <table className="adm-table">
               <thead>
                 <tr>
-                  <th>Delivery</th>
-                  <th>Kitchen / Pickup</th>
-                  <th>Courier Partner</th>
+                  <th>Dispatch ID</th>
+                  <th>Pickup Kitchen</th>
+                  <th>Assigned Courier</th>
                   <th>Distance & Fee</th>
                   <th>ETA</th>
                   <th>Status</th>
@@ -84,7 +92,7 @@ export function AdminDeliveriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {deliveries.map((d) => (
+                {paginatedDeliveries.map((d) => (
                   <tr key={d.id}>
                     <td>
                       <span className="adm-id-code" title={d.id}>#{d.id.slice(-6)}</span>
@@ -131,6 +139,18 @@ export function AdminDeliveriesPage() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={deliveries.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[10, 25, 50]}
+            itemLabel="deliveries"
+            className="adm-pagination-bar"
+          />
         </div>
       )}
 

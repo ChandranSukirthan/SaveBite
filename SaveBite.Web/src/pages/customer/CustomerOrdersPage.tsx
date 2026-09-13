@@ -11,6 +11,7 @@ import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
 import { LiveDeliveryMap } from "../../components/customer/LiveDeliveryMap";
 import { useSignalR } from "../../context/SignalRContext";
+import { Pagination } from "../../components/common/Pagination";
 
 type OrderFilterTab = "all" | "active" | "delivered" | "cancelled";
 
@@ -24,6 +25,8 @@ export function CustomerOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedAIOrderId, setExpandedAIOrderId] = useState<string | null>(null);
   const [expandedMapOrderId, setExpandedMapOrderId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(6);
 
   // Cancel modal state
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
@@ -165,6 +168,11 @@ export function CustomerOrdersPage() {
       return true;
     });
   }, [orders, activeTab, searchQuery]);
+
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredOrders.slice(start, start + pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -313,75 +321,76 @@ export function CustomerOrdersPage() {
 
         {/* Orders List */}
         {!loading && filteredOrders.length > 0 && (
-          <div className="co-list">
-            {filteredOrders.map((order) => (
-              <div key={order.id} className="co-order-card">
-                {/* Order Top Bar */}
-                <div className="co-order-top">
-                  <div className="co-id-box">
-                    <span className="co-order-id">Order #{order.id}</span>
-                    <span className="co-order-date">
-                      {new Date(order.createdAt).toLocaleDateString()} at{" "}
-                      {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+          <>
+            <div className="co-list">
+              {paginatedOrders.map((order) => (
+                <div key={order.id} className="co-order-card">
+                  {/* Order Top Bar */}
+                  <div className="co-order-top">
+                    <div className="co-id-box">
+                      <span className="co-order-id">Order #{order.id}</span>
+                      <span className="co-order-date">
+                        {new Date(order.createdAt).toLocaleDateString()} at{" "}
+                        {new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+
+                    <div className="co-status-wrap">
+                      <span className={`co-status-pill ${getStatusBadgeClass(order.status)}`}>
+                        {order.status}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="co-status-wrap">
-                    <span className={`co-status-pill ${getStatusBadgeClass(order.status)}`}>
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Stepper Progression */}
-                <div className="co-stepper-wrap">
-                  <OrderStatusStepper status={order.status} />
-                </div>
-
-                {/* Order Details Body */}
-                <div className="co-order-body">
-                  <div className="co-body-col">
-                    <span className="co-label">📦 Portions & Item</span>
-                    <p className="co-val">
-                      <strong>{order.quantity}x</strong> portion(s)
-                      {order.unitPrice ? ` at $${order.unitPrice.toFixed(2)} each` : ""}
-                    </p>
-                    <span className="co-sub">Food ID: {order.foodItemId}</span>
+                  {/* Stepper Progression */}
+                  <div className="co-stepper-wrap">
+                    <OrderStatusStepper status={order.status} />
                   </div>
 
-                  <div className="co-body-col">
-                    <span className="co-label">📍 Delivery Address</span>
-                    <p className="co-val">{order.deliveryAddress}</p>
-                    <span className="co-sub">Eco-friendly dispatch</span>
+                  {/* Order Details Body */}
+                  <div className="co-order-body">
+                    <div className="co-body-col">
+                      <span className="co-label">📦 Portions & Item</span>
+                      <p className="co-val">
+                        <strong>{order.quantity}x</strong> portion(s)
+                        {order.unitPrice ? ` at $${order.unitPrice.toFixed(2)} each` : ""}
+                      </p>
+                      <span className="co-sub">Food ID: {order.foodItemId}</span>
+                    </div>
+
+                    <div className="co-body-col">
+                      <span className="co-label">📍 Delivery Address</span>
+                      <p className="co-val">{order.deliveryAddress}</p>
+                      <span className="co-sub">Eco-friendly dispatch</span>
+                    </div>
+
+                    <div className="co-body-col">
+                      <span className="co-label">💰 Total Paid</span>
+                      <p className="co-price-val">${order.totalAmount.toFixed(2)}</p>
+                      <span className="co-free-tag">✓ Free Rescue Delivery</span>
+                    </div>
                   </div>
 
-                  <div className="co-body-col">
-                    <span className="co-label">💰 Total Paid</span>
-                    <p className="co-price-val">${order.totalAmount.toFixed(2)}</p>
-                    <span className="co-free-tag">✓ Free Rescue Delivery</span>
-                  </div>
-                </div>
-
-                {/* Order Footer Actions */}
-                <div className="co-order-footer">
-                  <div className="co-footer-left" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className="co-btn-estimate"
-                      onClick={() => handleViewEstimate(order)}
-                    >
-                      ⏱️ Quick ETA
-                    </button>
-                    <Link
-                      to={`/customer/orders/${order.id}/estimate`}
-                      className="co-btn-estimate"
-                      style={{ textDecoration: "none" }}
-                    >
-                      📊 Full Fare Breakdown ➔
-                    </Link>
-                    <button
-                      type="button"
-                      className="co-btn-estimate"
+                  {/* Order Footer Actions */}
+                  <div className="co-order-footer">
+                    <div className="co-footer-left" style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="co-btn-estimate"
+                        onClick={() => handleViewEstimate(order)}
+                      >
+                        ⏱️ Quick ETA
+                      </button>
+                      <Link
+                        to={`/customer/orders/${order.id}/estimate`}
+                        className="co-btn-estimate"
+                        style={{ textDecoration: "none" }}
+                      >
+                        📊 Full Fare Breakdown ➔
+                      </Link>
+                      <button
+                        type="button"
+                        className="co-btn-estimate"
                       style={{
                         background:
                           expandedAIOrderId === order.id
@@ -487,7 +496,20 @@ export function CustomerOrdersPage() {
               </div>
             ))}
           </div>
-        )}
+
+          {/* Pagination Controls */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filteredOrders.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+            pageSizeOptions={[6, 12, 24]}
+            itemLabel="orders"
+            className="co-pagination-bar"
+          />
+        </>
+      )}
 
         {/* Cancel Confirmation Modal */}
         {cancellingOrder && (

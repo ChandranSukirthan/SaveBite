@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -8,45 +9,50 @@ import {
 import { AuthProvider } from "./context/AuthContext";
 import { RoleProtectedRoute } from "./components/auth/RoleProtectedRoute";
 import { ProfileGate } from "./components/auth/ProfileGate";
-
-import LandingPage from "./pages/LandingPage";
-import LoginPage from "./pages/LoginPage";
-import RegisterPage from "./pages/RegisterPage";
-
-import CustomerProfileSetupPage from "./pages/profiles/CustomerProfileSetupPage";
-import RestaurantProfileSetupPage from "./pages/profiles/RestaurantProfileSetupPage";
-import DeliveryProfileSetupPage from "./pages/profiles/DeliveryProfileSetupPage";
-
-import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
-import { FoodDiscoveryPage } from "./pages/customer/FoodDiscoveryPage";
-import { FoodDetailsPage } from "./pages/customer/FoodDetailsPage";
-import { CustomerOrdersPage } from "./pages/customer/CustomerOrdersPage";
-import { AIRecommendationsPage } from "./pages/customer/AIRecommendationsPage";
-import { DeliveryEstimatePage } from "./pages/customer/DeliveryEstimatePage";
-import { OrderTrackingPage } from "./pages/customer/OrderTrackingPage";
-import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
-import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
-import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
-import { CustomerNotificationsPage } from "./pages/customer/CustomerNotificationsPage";
-import { DeliveryNotificationsPage } from "./pages/delivery/DeliveryNotificationsPage";
-import FoodListPage from "./pages/restaurant/FoodListPage";
-import AddFoodPage from "./pages/restaurant/AddFoodPage";
-import EditFoodPage from "./pages/restaurant/EditFoodPage";
-import RestaurantOrdersPage from "./pages/restaurant/RestaurantOrdersPage";
-import DeliveryDashboard from "./pages/dashboards/DeliveryDashboard";
-import { DeliveryProfilePage } from "./pages/delivery/DeliveryProfilePage";
-import { DeliveryRequestsPage } from "./pages/delivery/DeliveryRequestsPage";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
-import { AdminRestaurantsPage } from "./pages/admin/AdminRestaurantsPage";
-import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
-import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
-import { AdminDeliveriesPage } from "./pages/admin/AdminDeliveriesPage";
-import { AdminAIActivityPage } from "./pages/admin/AdminAIActivityPage";
-import { AdminUIStatesPage } from "./pages/admin/AdminUIStatesPage";
 import { SignalRProvider } from "./context/SignalRContext";
 import { ToastProvider } from "./context/ToastContext";
 import { SessionExpiredModal } from "./components/common/SessionExpiredModal";
+import { LoadingSpinner } from "./components/common/LoadingSpinner";
+
+// Lazy-loaded pages for fast code-splitting and small initial bundle
+const LandingPage = lazy(() => import("./pages/LandingPage"));
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/RegisterPage"));
+
+const CustomerProfileSetupPage = lazy(() => import("./pages/profiles/CustomerProfileSetupPage"));
+const RestaurantProfileSetupPage = lazy(() => import("./pages/profiles/RestaurantProfileSetupPage"));
+const DeliveryProfileSetupPage = lazy(() => import("./pages/profiles/DeliveryProfileSetupPage"));
+
+const CustomerDashboard = lazy(() => import("./pages/dashboards/CustomerDashboard"));
+const FoodDiscoveryPage = lazy(() => import("./pages/customer/FoodDiscoveryPage").then((m) => ({ default: m.FoodDiscoveryPage })));
+const FoodDetailsPage = lazy(() => import("./pages/customer/FoodDetailsPage").then((m) => ({ default: m.FoodDetailsPage })));
+const CustomerOrdersPage = lazy(() => import("./pages/customer/CustomerOrdersPage").then((m) => ({ default: m.CustomerOrdersPage })));
+const AIRecommendationsPage = lazy(() => import("./pages/customer/AIRecommendationsPage").then((m) => ({ default: m.AIRecommendationsPage })));
+const DeliveryEstimatePage = lazy(() => import("./pages/customer/DeliveryEstimatePage").then((m) => ({ default: m.DeliveryEstimatePage })));
+const OrderTrackingPage = lazy(() => import("./pages/customer/OrderTrackingPage").then((m) => ({ default: m.OrderTrackingPage })));
+const CustomerNotificationsPage = lazy(() => import("./pages/customer/CustomerNotificationsPage").then((m) => ({ default: m.CustomerNotificationsPage })));
+
+const RestaurantDashboard = lazy(() => import("./pages/dashboards/RestaurantDashboard"));
+const RestaurantProfileView = lazy(() => import("./pages/restaurant/RestaurantProfileView"));
+const RestaurantNotificationsPage = lazy(() => import("./pages/restaurant/RestaurantNotificationsPage"));
+const FoodListPage = lazy(() => import("./pages/restaurant/FoodListPage"));
+const AddFoodPage = lazy(() => import("./pages/restaurant/AddFoodPage"));
+const EditFoodPage = lazy(() => import("./pages/restaurant/EditFoodPage"));
+const RestaurantOrdersPage = lazy(() => import("./pages/restaurant/RestaurantOrdersPage"));
+
+const DeliveryDashboard = lazy(() => import("./pages/dashboards/DeliveryDashboard"));
+const DeliveryProfilePage = lazy(() => import("./pages/delivery/DeliveryProfilePage").then((m) => ({ default: m.DeliveryProfilePage })));
+const DeliveryRequestsPage = lazy(() => import("./pages/delivery/DeliveryRequestsPage").then((m) => ({ default: m.DeliveryRequestsPage })));
+const DeliveryNotificationsPage = lazy(() => import("./pages/delivery/DeliveryNotificationsPage").then((m) => ({ default: m.DeliveryNotificationsPage })));
+
+const AdminDashboardPage = lazy(() => import("./pages/admin/AdminDashboardPage").then((m) => ({ default: m.AdminDashboardPage })));
+const AdminRestaurantsPage = lazy(() => import("./pages/admin/AdminRestaurantsPage").then((m) => ({ default: m.AdminRestaurantsPage })));
+const AdminUsersPage = lazy(() => import("./pages/admin/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage })));
+const AdminOrdersPage = lazy(() => import("./pages/admin/AdminOrdersPage").then((m) => ({ default: m.AdminOrdersPage })));
+const AdminDeliveriesPage = lazy(() => import("./pages/admin/AdminDeliveriesPage").then((m) => ({ default: m.AdminDeliveriesPage })));
+const AdminAIActivityPage = lazy(() => import("./pages/admin/AdminAIActivityPage").then((m) => ({ default: m.AdminAIActivityPage })));
+const AdminUIStatesPage = lazy(() => import("./pages/admin/AdminUIStatesPage").then((m) => ({ default: m.AdminUIStatesPage })));
 
 
 function App() {
@@ -56,7 +62,22 @@ function App() {
         <ToastProvider>
           <BrowserRouter>
             <SessionExpiredModal />
-            <Routes>
+            <Suspense
+              fallback={
+                <div
+                  style={{
+                    minHeight: "100vh",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "var(--bg-light, #f8f9fa)",
+                  }}
+                >
+                  <LoadingSpinner size="lg" label="Loading SaveBite..." />
+                </div>
+              }
+            >
+              <Routes>
 
           {/* Public Landing Page */}
           <Route
@@ -568,6 +589,7 @@ function App() {
           />
 
         </Routes>
+      </Suspense>
       </BrowserRouter>
       </ToastProvider>
       </SignalRProvider>

@@ -17,12 +17,17 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => Promise.reject(error),
+  (error) => Promise.reject(error)
 );
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // If request was canceled by user/debounce AbortController, ignore
+    if (axios.isCancel(error)) {
+      return Promise.reject(error);
+    }
+
     if (
       error.response?.status === 401 &&
       !error.config?.url?.includes("/Auth/login") &&
@@ -33,7 +38,8 @@ api.interceptors.response.use(
       window.dispatchEvent(new Event("savebite:auth-expired"));
     }
     return Promise.reject(error);
-  },
+  }
 );
 
+export const isCancel = axios.isCancel;
 export default api;
