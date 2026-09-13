@@ -8458,5 +8458,630 @@ body {
   }
 }
 
+/* ============================================================
+   MILESTONE 19: LIVE DRIVER GPS TELEMETRY & TRACKING (.ldg-*)
+   ============================================================ */
+.ldg-card {
+  background: #141414;
+  border: 1px solid #262626;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  color: #ffffff;
+}
 
+.ldg-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #262626;
+}
 
+.ldg-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ldg-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ldg-icon {
+  font-size: 20px;
+}
+
+.ldg-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.ldg-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.ldg-status-badge {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ldg-status-badge--broadcasting {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  animation: ldgPulseGreen 1.6s infinite ease-in-out;
+}
+
+.ldg-status-badge--simulating {
+  background: rgba(245, 197, 24, 0.15);
+  color: #f5c518;
+  border: 1px solid rgba(245, 197, 24, 0.4);
+}
+
+.ldg-status-badge--requesting {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.ldg-status-badge--permission_denied,
+.ldg-status-badge--signal_lost {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.ldg-status-badge--network_offline {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.ldg-status-badge--idle {
+  background: #262626;
+  color: #9ca3af;
+  border: 1px solid #383838;
+}
+
+@keyframes ldgPulseGreen {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.ldg-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ldg-btn {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  border: none;
+}
+
+.ldg-btn--primary {
+  background: #f5c518;
+  color: #0f0f0f;
+}
+.ldg-btn--primary:hover:not(:disabled) {
+  background: #e0b010;
+  transform: translateY(-1px);
+}
+.ldg-btn--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ldg-btn--stop {
+  background: #ef4444;
+  color: #ffffff;
+}
+.ldg-btn--stop:hover {
+  background: #dc2626;
+}
+
+.ldg-btn--simulating {
+  background: #262626;
+  color: #f5c518;
+  border: 1px solid #f5c518;
+}
+
+.ldg-btn--outline {
+  background: transparent;
+  color: #e5e7eb;
+  border: 1px solid #383838;
+}
+.ldg-btn--outline:hover {
+  background: #262626;
+  border-color: #555555;
+}
+
+.ldg-alert-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+
+.ldg-alert-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.ldg-alert-text {
+  flex: 1;
+}
+
+.ldg-alert-btn {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ldg-hud-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.ldg-hud-item {
+  background: #1c1c1c;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ldg-hud-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #71717a;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.ldg-hud-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #f3f4f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ldg-hud-val--fresh {
+  color: #10b981;
+}
+
+.ldg-sim-bar {
+  margin-top: 14px;
+  background: rgba(245, 197, 24, 0.08);
+  border: 1px dashed rgba(245, 197, 24, 0.3);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ldg-sim-tag {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f5c518;
+  letter-spacing: 0.5px;
+}
+
+.ldg-sim-info {
+  font-size: 12px;
+  color: #d1d5db;
+}
+
+.ldg-btn-step {
+  background: #262626;
+  color: #f5c518;
+  border: 1px solid #f5c518;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.ldg-btn-step:hover {
+  background: #333333;
+}
+
+/* ============================================================
+   MILESTONE 19: LIVE DELIVERY MAP SVG CANVAS (.ldm-*)
+   ============================================================ */
+.ldm-container {
+  position: relative;
+  width: 100%;
+  background: #111111;
+  border: 1px solid #262626;
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ldm-hud {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.ldm-hud-left,
+.ldm-hud-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.ldm-live-pill {
+  background: rgba(15, 15, 15, 0.88);
+  border: 1px solid #333333;
+  backdrop-filter: blur(8px);
+  padding: 6px 12px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ldm-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.ldm-live-dot--active {
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  animation: ldmPulseGreen 1.4s infinite ease-in-out;
+}
+
+.ldm-live-dot--warning {
+  background: #f59e0b;
+  box-shadow: 0 0 8px #f59e0b;
+}
+
+@keyframes ldmPulseGreen {
+  0% { transform: scale(0.9); opacity: 0.7; }
+  50% { transform: scale(1.3); opacity: 1; }
+  100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.ldm-live-text {
+  font-size: 11px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.6px;
+}
+
+.ldm-timestamp {
+  font-size: 11px;
+  color: #9ca3af;
+  background: rgba(15, 15, 15, 0.8);
+  padding: 5px 10px;
+  border-radius: 16px;
+  backdrop-filter: blur(6px);
+  border: 1px solid #262626;
+}
+
+.ldm-metric-pill {
+  background: rgba(15, 15, 15, 0.88);
+  border: 1px solid #333333;
+  backdrop-filter: blur(8px);
+  padding: 5px 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ldm-metric-pill--eta {
+  border-color: rgba(245, 197, 24, 0.4);
+}
+
+.ldm-metric-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ldm-metric-val {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #f5c518;
+}
+
+.ldm-stale-banner {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9;
+  background: rgba(245, 158, 11, 0.92);
+  color: #000000;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(6px);
+}
+
+.ldm-svg {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  display: block;
+  user-select: none;
+}
+
+/* Route Lines */
+.ldm-route-line-bg {
+  stroke: #333333;
+  stroke-width: 4;
+  stroke-dasharray: 6 6;
+  stroke-linecap: round;
+  transition: all 0.6s ease;
+}
+
+.ldm-route-line-traveled {
+  stroke: #4b5563;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  opacity: 0.7;
+  transition: all 0.6s ease;
+}
+
+.ldm-route-line-active {
+  stroke: url(#ldmRouteGrad);
+  stroke-width: 4.5;
+  stroke-dasharray: 8 6;
+  stroke-linecap: round;
+  animation: ldmDash 2.5s linear infinite;
+  transition: all 0.6s ease;
+}
+
+@keyframes ldmDash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+
+/* Markers & Animations */
+.ldm-pin-group circle,
+.ldm-pin-group rect,
+.ldm-pin-group text {
+  transition: all 0.4s ease;
+}
+
+.ldm-target-pulse {
+  animation: ldmTargetPulse 2s infinite ease-out;
+}
+
+@keyframes ldmTargetPulse {
+  0% {
+    r: 14;
+    opacity: 0.9;
+  }
+  100% {
+    r: 32;
+    opacity: 0;
+  }
+}
+
+.ldm-driver-group {
+  transition: transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.ldm-driver-group circle,
+.ldm-driver-group text,
+.ldm-driver-group g {
+  transition: cx 1.2s cubic-bezier(0.25, 1, 0.5, 1),
+              cy 1.2s cubic-bezier(0.25, 1, 0.5, 1),
+              x 1.2s cubic-bezier(0.25, 1, 0.5, 1),
+              y 1.2s cubic-bezier(0.25, 1, 0.5, 1),
+              transform 1.2s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+.ldm-radar-wave {
+  animation: ldmRadarPulse 2s infinite ease-out;
+  transform-origin: center;
+}
+
+@keyframes ldmRadarPulse {
+  0% {
+    r: 20;
+    opacity: 0.8;
+  }
+  100% {
+    r: 44;
+    opacity: 0;
+  }
+}
+
+.ldm-driver-halo {
+  opacity: 0.35;
+}
+
+.ldm-driver-pin {
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
+}
+
+/* Bottom Footer Card */
+.ldm-footer-card {
+  position: absolute;
+  bottom: 12px;
+  left: 14px;
+  right: 14px;
+  z-index: 10;
+  background: rgba(20, 20, 20, 0.94);
+  border: 1px solid #333333;
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.ldm-courier-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ldm-courier-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: #1f1f1f;
+  border: 2px solid #f5c518;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+.ldm-courier-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ldm-courier-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ldm-courier-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.ldm-vehicle-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f5c518;
+  background: rgba(245, 197, 24, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.ldm-coords-text {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.ldm-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ldm-contact-btn {
+  background: #262626;
+  border: 1px solid #383838;
+  color: #ffffff;
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.ldm-contact-btn:hover {
+  background: #333333;
+  color: #f5c518;
+  border-color: #f5c518;
+}
+
+.ldm-eta-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.ldm-eta-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ldm-eta-val {
+  font-size: 16px;
+  font-weight: 900;
+  color: #10b981;
+}

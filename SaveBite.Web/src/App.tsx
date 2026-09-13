@@ -23,6 +23,7 @@ import { FoodDetailsPage } from "./pages/customer/FoodDetailsPage";
 import { CustomerOrdersPage } from "./pages/customer/CustomerOrdersPage";
 import { AIRecommendationsPage } from "./pages/customer/AIRecommendationsPage";
 import { DeliveryEstimatePage } from "./pages/customer/DeliveryEstimatePage";
+import { OrderTrackingPage } from "./pages/customer/OrderTrackingPage";
 import RestaurantDashboard from "./pages/dashboards/RestaurantDashboard";
 import RestaurantProfileView from "./pages/restaurant/RestaurantProfileView";
 import RestaurantNotificationsPage from "./pages/restaurant/RestaurantNotificationsPage";
@@ -323,6 +324,20 @@ function App() {
               >
                 <ProfileGate>
                   <DeliveryEstimatePage />
+                </ProfileGate>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/customer/orders/:orderId/track"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Customer"
+                fallbackLogin="/customer/login"
+              >
+                <ProfileGate>
+                  <OrderTrackingPage />
                 </ProfileGate>
               </RoleProtectedRoute>
             }

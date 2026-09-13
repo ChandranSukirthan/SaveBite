@@ -53,3 +53,22 @@ export interface UpdateLocationPayload {
   latitude: number;
   longitude: number;
 }
+
+export interface DriverTelemetry {
+  latitude: number;
+  longitude: number;
+  heading?: number | null;
+  speed?: number | null;
+  accuracy?: number | null;
+  updatedAt: string;
+}
+
+export type GpsTrackingStatus =
+  | "idle"
+  | "requesting"
+  | "broadcasting"
+  | "permission_denied"
+  | "signal_lost"
+  | "network_offline"
+  | "simulating";
+

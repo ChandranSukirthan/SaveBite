@@ -17,6 +17,7 @@ import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCa
 import { DeliveryStatusStepper } from "../../components/delivery/DeliveryStatusStepper";
 import { AcceptDeliveryModal } from "../../components/delivery/AcceptDeliveryModal";
 import { RejectDeliveryModal } from "../../components/delivery/RejectDeliveryModal";
+import { LiveDriverGpsTracker } from "../../components/delivery/LiveDriverGpsTracker";
 import { useSignalR } from "../../context/SignalRContext";
 
 export function DeliveryDashboard() {
@@ -507,6 +508,15 @@ export function DeliveryDashboard() {
             {/* 5-Stage Stepper Progression */}
             <div className="del-stepper-box">
               <DeliveryStatusStepper status={activeDelivery.status} />
+            </div>
+
+            {/* LIVE DRIVER GPS TELEMETRY BROADCASTER (Milestone 19) */}
+            <div style={{ margin: "16px 0" }}>
+              <LiveDriverGpsTracker
+                activeRequest={activeDelivery}
+                initialLat={lat ?? 40.7128}
+                initialLon={lng ?? -74.006}
+              />
             </div>
 
             {/* Trajectory Details */}

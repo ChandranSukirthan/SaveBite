@@ -9,6 +9,7 @@ import {
 import type { Order } from "../../types/restaurant";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { LiveDeliveryMap } from "../../components/customer/LiveDeliveryMap";
 import { useSignalR } from "../../context/SignalRContext";
 
 type OrderFilterTab = "all" | "active" | "delivered" | "cancelled";
@@ -21,6 +22,8 @@ export function CustomerOrdersPage() {
   // Filter & Search
   const [activeTab, setActiveTab] = useState<OrderFilterTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedAIOrderId, setExpandedAIOrderId] = useState<string | null>(null);
+  const [expandedMapOrderId, setExpandedMapOrderId] = useState<string | null>(null);
 
   // Cancel modal state
   const [cancellingOrder, setCancellingOrder] = useState<Order | null>(null);
@@ -33,7 +36,6 @@ export function CustomerOrdersPage() {
   const [estimateOrder, setEstimateOrder] = useState<Order | null>(null);
   const [estimateData, setEstimateData] = useState<any | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
-  const [expandedAIOrderId, setExpandedAIOrderId] = useState<string | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -397,8 +399,44 @@ export function CustomerOrdersPage() {
                         )
                       }
                     >
-                      🤖 {expandedAIOrderId === order.id ? "Hide AI Dispatch" : "AI Dispatch"}
+                      🤖 {expandedAIOrderId === order.id ? "Hide AI Dispatch" : "AI Dispatch Status"}
                     </button>
+                    <button
+                      type="button"
+                      className="co-btn-estimate"
+                      style={{
+                        background:
+                          expandedMapOrderId === order.id
+                            ? "#10b981"
+                            : ["ReadyForPickup", "PickedUp", "OutForDelivery"].includes(order.status)
+                            ? "#ecfdf5"
+                            : undefined,
+                        color:
+                          expandedMapOrderId === order.id
+                            ? "#ffffff"
+                            : ["ReadyForPickup", "PickedUp", "OutForDelivery"].includes(order.status)
+                            ? "#065f46"
+                            : undefined,
+                        borderColor: ["ReadyForPickup", "PickedUp", "OutForDelivery"].includes(order.status)
+                          ? "#10b981"
+                          : undefined,
+                        fontWeight: 800,
+                      }}
+                      onClick={() =>
+                        setExpandedMapOrderId(
+                          expandedMapOrderId === order.id ? null : order.id
+                        )
+                      }
+                    >
+                      🗺️ {expandedMapOrderId === order.id ? "Hide Live Map" : "Live Map"}
+                    </button>
+                    <Link
+                      to={`/customer/orders/${order.id}/track`}
+                      className="co-btn-estimate"
+                      style={{ textDecoration: "none", fontWeight: 700 }}
+                    >
+                      🛰️ Fullscreen Map ➔
+                    </Link>
                   </div>
 
                   <div className="co-footer-right">
@@ -419,6 +457,19 @@ export function CustomerOrdersPage() {
                     )}
                   </div>
                 </div>
+
+                {/* EXPANDABLE LIVE MAP TRACKING (Milestone 19) */}
+                {expandedMapOrderId === order.id && (
+                  <div style={{ padding: "0 16px 16px" }}>
+                    <LiveDeliveryMap
+                      orderId={order.id}
+                      orderStatus={order.status}
+                      customer={{ address: order.deliveryAddress }}
+                      height={360}
+                      showDetails={true}
+                    />
+                  </div>
+                )}
 
                 {/* EXPANDABLE AI DISPATCH PANEL */}
                 {expandedAIOrderId === order.id && (

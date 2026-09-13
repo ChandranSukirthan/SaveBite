@@ -15,6 +15,7 @@ import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { OrderStatusStepper } from "../../components/orders/OrderStatusStepper";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { LiveDeliveryMap } from "../../components/customer/LiveDeliveryMap";
 import { useSignalR } from "../../context/SignalRContext";
 
 const CATEGORIES = [
@@ -350,6 +351,53 @@ export function CustomerDashboard() {
                 orderId={activeOrder.id}
                 initialStatus={activeOrder.status}
               />
+            )}
+
+            {/* LIVE COURIER TRACKING MAP (Milestone 19) */}
+            {(activeOrder.status === "ReadyForPickup" ||
+              activeOrder.status === "PickedUp" ||
+              activeOrder.status === "OutForDelivery") && (
+              <div style={{ marginTop: "24px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "12px",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{ fontSize: "18px" }}>🗺️</span>
+                    <strong style={{ fontSize: "14.5px", fontWeight: 800 }}>
+                      Live Courier Movement & Real-Time Tracking
+                    </strong>
+                  </div>
+                  <Link
+                    to={`/customer/orders/${activeOrder.id}/track`}
+                    style={{
+                      fontSize: "12px",
+                      fontWeight: 800,
+                      color: "var(--black)",
+                      background: "var(--yellow)",
+                      padding: "5px 12px",
+                      borderRadius: "6px",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Open Fullscreen Live Tracking ➔
+                  </Link>
+                </div>
+
+                <LiveDeliveryMap
+                  orderId={activeOrder.id}
+                  orderStatus={activeOrder.status}
+                  customer={{ address: activeOrder.deliveryAddress }}
+                  height={380}
+                  showDetails={true}
+                />
+              </div>
             )}
           </div>
         )}

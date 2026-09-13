@@ -8,6 +8,7 @@ import {
 } from "../../services/customerService";
 import type { Order } from "../../types/restaurant";
 import { AIDeliveryStatusPanel } from "../../components/delivery/AIDeliveryStatusPanel";
+import { LiveDeliveryMap } from "../../components/customer/LiveDeliveryMap";
 import { useSignalR } from "../../context/SignalRContext";
 
 export function DeliveryEstimatePage() {
@@ -115,12 +116,19 @@ export function DeliveryEstimatePage() {
             >
               🔄 Refresh Estimate
             </button>
+            <Link
+              to={`/customer/orders/${orderId}/track`}
+              className="fd-btn-action"
+              style={{ textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px" }}
+            >
+              🛰️ Live Courier Map
+            </Link>
             <button
               type="button"
-              className="fd-btn-action"
+              className="de-btn-outline"
               onClick={() => navigate("/customer/orders")}
             >
-              View Order Tracking
+              All Orders
             </button>
           </div>
         </div>
@@ -267,7 +275,43 @@ export function DeliveryEstimatePage() {
             <div className="de-side-col">
               {/* Route Trajectory Card */}
               <div className="de-route-card">
-                <h3 className="de-section-title">Route Telemetry</h3>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <h3 className="de-section-title" style={{ margin: 0 }}>Route Telemetry</h3>
+                  <Link
+                    to={`/customer/orders/${orderId}/track`}
+                    className="rst-code"
+                    style={{ textDecoration: "none", color: "var(--yellow)", fontWeight: 700 }}
+                  >
+                    Fullscreen Map ↗
+                  </Link>
+                </div>
+
+                <div style={{ marginBottom: "16px" }}>
+                  <LiveDeliveryMap
+                    orderId={orderId!}
+                    orderStatus={order?.status || "InTransit"}
+                    restaurant={{
+                      name: restaurant?.name || "Partner Kitchen",
+                      address: order?.deliveryAddress || "Kitchen Location",
+                      location: {
+                        coordinates: [-74.006, 40.7128],
+                      },
+                    }}
+                    customer={{
+                      address: order?.deliveryAddress || "Customer Destination",
+                      location: {
+                        coordinates: [-73.9857, 40.7484],
+                      },
+                    }}
+                    driver={{
+                      name: "SaveBite Eco-Courier",
+                      vehicleType: "Electric Bike",
+                      vehicleNumber: "ECO-BIKE-09",
+                    }}
+                    height={260}
+                    showDetails={false}
+                  />
+                </div>
 
                 <div className="de-timeline">
                   {/* Origin: Restaurant */}
