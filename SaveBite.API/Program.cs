@@ -5,7 +5,9 @@ using Microsoft.IdentityModel.Tokens;
 using SaveBite.API.Configuration;
 using SaveBite.API.Hubs;
 using SaveBite.API.Middleware;
+using SaveBite.API.Models;
 using SaveBite.API.Services;
+using MongoDB.Driver;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -94,6 +96,28 @@ using (var scope = app.Services.CreateScope())
         .GetRequiredService<MongoDbContext>();
 
     await MongoDbIndexes.CreateAsync(mongoDbContext);
+
+    // Seed default administrator if not present
+    var usersCollection = mongoDbContext.Database
+        .GetCollection<User>("users");
+
+    var adminExists = await usersCollection
+        .Find(x => x.Role == UserRole.Admin)
+        .AnyAsync();
+
+    if (!adminExists)
+    {
+        var defaultAdmin = new User
+        {
+            FullName = "Platform Administrator",
+            Email = "admin@savebite.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            Role = UserRole.Admin,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+        await usersCollection.InsertOneAsync(defaultAdmin);
+    }
 }
 
 if (app.Environment.IsDevelopment())

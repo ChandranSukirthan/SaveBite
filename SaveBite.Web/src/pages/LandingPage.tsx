@@ -104,6 +104,7 @@ function LandingPage() {
           <a onClick={() => navigate("/customer/login")}>Customer</a>
           <a onClick={() => navigate("/restaurant/login")}>Restaurant</a>
           <a onClick={() => navigate("/delivery/login")}>Delivery</a>
+          <a onClick={() => navigate("/admin/login")}>Admin Portal</a>
         </div>
       </footer>
 

@@ -12,7 +12,7 @@ import {
 } from "../../services/notificationService";
 
 interface NotificationBellDropdownProps {
-  role?: "Customer" | "RestaurantOwner" | "DeliveryPerson";
+  role?: "Customer" | "RestaurantOwner" | "DeliveryPerson" | "Admin";
   className?: string;
 }
 

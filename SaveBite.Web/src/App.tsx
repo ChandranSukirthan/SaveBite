@@ -36,7 +36,13 @@ import RestaurantOrdersPage from "./pages/restaurant/RestaurantOrdersPage";
 import DeliveryDashboard from "./pages/dashboards/DeliveryDashboard";
 import { DeliveryProfilePage } from "./pages/delivery/DeliveryProfilePage";
 import { DeliveryRequestsPage } from "./pages/delivery/DeliveryRequestsPage";
-import AdminDashboard from "./pages/dashboards/AdminDashboard";
+import { AdminLayout } from "./components/layout/AdminLayout";
+import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
+import { AdminRestaurantsPage } from "./pages/admin/AdminRestaurantsPage";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
+import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
+import { AdminDeliveriesPage } from "./pages/admin/AdminDeliveriesPage";
+import { AdminAIActivityPage } from "./pages/admin/AdminAIActivityPage";
 import { SignalRProvider } from "./context/SignalRContext";
 
 
@@ -121,6 +127,19 @@ function App() {
                 title="Create Delivery Account"
                 subtitle="Earn by delivering eco-friendly food orders."
                 loginPath="/delivery/login"
+              />
+            }
+          />
+
+          {/* Administrator Authentication */}
+          <Route
+            path="/admin/login"
+            element={
+              <LoginPage
+                role="Admin"
+                title="Administrator Login"
+                subtitle="Access platform administration, verification controls, and telemetry."
+                registerPath="/admin/login"
               />
             }
           />
@@ -439,9 +458,81 @@ function App() {
             element={
               <RoleProtectedRoute
                 allowedRole="Admin"
-                fallbackLogin="/customer/login"
+                fallbackLogin="/admin/login"
               >
-                <AdminDashboard />
+                <AdminLayout>
+                  <AdminDashboardPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/restaurants"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminRestaurantsPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/users"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminUsersPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/orders"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminOrdersPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/deliveries"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminDeliveriesPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin/ai-activity"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminAIActivityPage />
+                </AdminLayout>
               </RoleProtectedRoute>
             }
           />

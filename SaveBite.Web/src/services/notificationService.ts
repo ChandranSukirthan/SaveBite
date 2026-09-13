@@ -143,11 +143,19 @@ export function getNotificationDeepLink(
     if (role === "DeliveryPerson") {
       return `/delivery/dashboard`;
     }
+    if (role === "Admin") {
+      return `/admin/orders`;
+    }
     return `/customer/orders/${notif.orderId}/track`;
   }
 
-  if (notif.deliveryRequestId && role === "DeliveryPerson") {
-    return `/delivery/requests`;
+  if (notif.deliveryRequestId) {
+    if (role === "Admin") {
+      return `/admin/deliveries`;
+    }
+    if (role === "DeliveryPerson") {
+      return `/delivery/requests`;
+    }
   }
 
   return null;
