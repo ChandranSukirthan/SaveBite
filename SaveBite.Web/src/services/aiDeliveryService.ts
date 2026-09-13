@@ -34,7 +34,6 @@ export interface AIDeliveryTelemetry {
 
 const AI_BASE_URL =
   import.meta.env.VITE_AI_BASE_URL || "http://localhost:8001";
-const AI_SERVICE_KEY = "savebite-internal-ai-development-key";
 
 /**
  * Fallback generator for client-side resilience if AI service is temporarily offline
@@ -145,7 +144,6 @@ export async function optimizeDeliveryWithAI(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-AI-Service-Key": AI_SERVICE_KEY,
       },
     });
 
@@ -183,7 +181,6 @@ export async function retryDeliveryWithAI(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-AI-Service-Key": AI_SERVICE_KEY,
       },
     });
 
@@ -213,9 +210,6 @@ export async function getAIDeliveryTelemetry(
   try {
     const res = await fetch(url, {
       method: "GET",
-      headers: {
-        "X-AI-Service-Key": AI_SERVICE_KEY,
-      },
     });
 
     if (!res.ok) {
