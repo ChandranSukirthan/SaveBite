@@ -9,6 +9,9 @@ import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
 import { RestaurantDetailsModal } from "../../components/customer/RestaurantDetailsModal";
 import { FoodDiscoveryMap } from "../../components/customer/FoodDiscoveryMap";
+import { FoodCardSkeleton } from "../../components/common/Skeleton";
+import { NoFoodEmptyState } from "../../components/common/EmptyState";
+import { ErrorState } from "../../components/common/ErrorState";
 
 const CATEGORIES = [
   "All",
@@ -313,16 +316,20 @@ export function FoodDiscoveryPage() {
 
         {/* Error Alert */}
         {error && (
-          <div className="cst-alert-danger">
-            ⚠️ {error}
+          <div style={{ marginBottom: "20px" }}>
+            <ErrorState inline title="Search Failed" message={error} onRetry={fetchSurplusFood} />
           </div>
         )}
 
-        {/* Loading Spinner */}
+        {/* Loading Skeletons */}
         {loading && (
-          <div className="fd-loading-card">
-            <div className="spinner-border text-warning" role="status" />
-            <p>Scanning nearby verified restaurants for surplus portions...</p>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+            <FoodCardSkeleton />
+            <FoodCardSkeleton />
+            <FoodCardSkeleton />
+            <FoodCardSkeleton />
+            <FoodCardSkeleton />
+            <FoodCardSkeleton />
           </div>
         )}
 
@@ -344,28 +351,14 @@ export function FoodDiscoveryPage() {
             ) : (
               <>
                 {filteredAndSortedFoods.length === 0 ? (
-                  <div className="fd-empty-card">
-                    <span className="fd-empty-icon">🍽️</span>
-                    <h3>No Surplus Food Found Nearby</h3>
-                    <p>
-                      We couldn't find any surplus food matching your current filters within{" "}
-                      {radiusKm} km.
-                    </p>
-                    <div className="fd-empty-actions">
-                      <button
-                        type="button"
-                        className="fd-btn-action"
-                        onClick={() => {
-                          setSelectedCategory("All");
-                          setSearchQuery("");
-                          setMaxPrice(50);
-                          setRadiusKm(50);
-                        }}
-                      >
-                        Expand Search to 50 km
-                      </button>
-                    </div>
-                  </div>
+                  <NoFoodEmptyState
+                    onExpandRadius={() => setRadiusKm(50)}
+                    onResetFilters={() => {
+                      setSelectedCategory("All");
+                      setSearchQuery("");
+                      setMaxPrice(50);
+                    }}
+                  />
                 ) : (
                   <div className="fd-grid">
                     {filteredAndSortedFoods.map((food) => (

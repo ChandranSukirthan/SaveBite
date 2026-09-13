@@ -10,6 +10,8 @@ import type { CustomerProfile } from "../../types/profile";
 import type { DiscoveredFoodItem } from "../../types/customer";
 import { CountdownTimer } from "../../components/food/CountdownTimer";
 import { CustomerReserveModal } from "../../components/customer/CustomerReserveModal";
+import { AIErrorState } from "../../components/common/ErrorState";
+import { NoFoodEmptyState } from "../../components/common/EmptyState";
 
 const CATEGORIES = [
   "All",
@@ -238,8 +240,8 @@ export function AIRecommendationsPage() {
 
         {/* Error Alert */}
         {error && (
-          <div className="cst-alert-danger">
-            ⚠️ {error}
+          <div style={{ marginBottom: "24px" }}>
+            <AIErrorState onRetry={runAIAgent} />
           </div>
         )}
 
@@ -259,13 +261,13 @@ export function AIRecommendationsPage() {
                 return (
                   <div
                     key={s.step}
-                    className={`air-step-box ${isComplete ? "complete" : isCurrent ? "current" : "pending"}`}
+                    className={`air-step-card ${isComplete ? "complete" : ""} ${isCurrent ? "current" : ""}`}
                   >
-                    <div className="air-step-indicator">
-                      {isComplete ? "✓" : isCurrent ? "⚡" : s.step}
+                    <div className="air-step-num">
+                      {isComplete ? "✓" : s.step}
                     </div>
-                    <div className="air-step-body">
-                      <span className="air-step-name">"{s.title}"</span>
+                    <div className="air-step-text">
+                      <span className="air-step-title">{s.title}</span>
                       <span className="air-step-desc">{s.desc}</span>
                     </div>
                   </div>
@@ -276,7 +278,7 @@ export function AIRecommendationsPage() {
         )}
 
         {/* RESULTS VIEW */}
-        {!loading && (
+        {!loading && !error && (
           <>
             {/* Agent Verdict Banner */}
             {agentMessage && (
@@ -290,27 +292,17 @@ export function AIRecommendationsPage() {
             )}
 
             {recommendations.length === 0 ? (
-              <div className="fd-empty-card">
-                <span className="fd-empty-icon">🤖</span>
-                <h3>No Recommendations Available</h3>
-                <p>
-                  No surplus items matched your exact preferences within {radiusKm} km. Try expanding
-                  your search radius or budget slider.
-                </p>
-                <div className="fd-empty-actions">
-                  <button
-                    type="button"
-                    className="fd-btn-action"
-                    onClick={() => {
-                      setRadiusKm(50);
-                      setMaxPrice(50);
-                      setSelectedCategory("All");
-                    }}
-                  >
-                    Reset Filters & Re-Analyze
-                  </button>
-                </div>
-              </div>
+              <NoFoodEmptyState
+                onExpandRadius={() => {
+                  setRadiusKm(25);
+                  runAIAgent();
+                }}
+                onResetFilters={() => {
+                  setSelectedCategory("All");
+                  setMaxPrice(50);
+                  setRadiusKm(15);
+                }}
+              />
             ) : (
               <div className="air-cards-grid">
                 {recommendations.map((rec) => (

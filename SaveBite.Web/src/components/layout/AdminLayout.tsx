@@ -52,6 +52,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: "Orders", path: "/admin/orders", icon: "📦" },
     { label: "Deliveries", path: "/admin/deliveries", icon: "🛵" },
     { label: "AI Activity", path: "/admin/ai-activity", icon: "🧠" },
+    { label: "UI States", path: "/admin/ui-states", icon: "🎨" },
   ];
 
   return (

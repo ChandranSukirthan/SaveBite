@@ -43,15 +43,20 @@ import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
 import { AdminDeliveriesPage } from "./pages/admin/AdminDeliveriesPage";
 import { AdminAIActivityPage } from "./pages/admin/AdminAIActivityPage";
+import { AdminUIStatesPage } from "./pages/admin/AdminUIStatesPage";
 import { SignalRProvider } from "./context/SignalRContext";
+import { ToastProvider } from "./context/ToastContext";
+import { SessionExpiredModal } from "./components/common/SessionExpiredModal";
 
 
 function App() {
   return (
     <AuthProvider>
       <SignalRProvider>
-        <BrowserRouter>
-        <Routes>
+        <ToastProvider>
+          <BrowserRouter>
+            <SessionExpiredModal />
+            <Routes>
 
           {/* Public Landing Page */}
           <Route
@@ -537,6 +542,20 @@ function App() {
             }
           />
 
+          <Route
+            path="/admin/ui-states"
+            element={
+              <RoleProtectedRoute
+                allowedRole="Admin"
+                fallbackLogin="/admin/login"
+              >
+                <AdminLayout>
+                  <AdminUIStatesPage />
+                </AdminLayout>
+              </RoleProtectedRoute>
+            }
+          />
+
           {/* Fallback redirect */}
           <Route
             path="*"
@@ -550,6 +569,7 @@ function App() {
 
         </Routes>
       </BrowserRouter>
+      </ToastProvider>
       </SignalRProvider>
     </AuthProvider>
   );
