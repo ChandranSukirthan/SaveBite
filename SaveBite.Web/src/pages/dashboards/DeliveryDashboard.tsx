@@ -17,8 +17,16 @@ import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCa
 import { DeliveryStatusStepper } from "../../components/delivery/DeliveryStatusStepper";
 import { AcceptDeliveryModal } from "../../components/delivery/AcceptDeliveryModal";
 import { RejectDeliveryModal } from "../../components/delivery/RejectDeliveryModal";
+import { useSignalR } from "../../context/SignalRContext";
 
 export function DeliveryDashboard() {
+  const {
+    onNotificationReceived,
+    onDeliveryStatusUpdated,
+    onOrderStatusUpdated,
+    joinDeliveryGroup,
+    leaveDeliveryGroup,
+  } = useSignalR();
   const [profile, setProfile] = useState<DeliveryPersonProfile | null>(null);
   const [requests, setRequests] = useState<DeliveryRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +62,48 @@ export function DeliveryDashboard() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Real-time SignalR listeners
+  useEffect(() => {
+    const unsubNotif = onNotificationReceived((notif) => {
+      console.log("Real-time notification received on driver dashboard:", notif);
+      loadData();
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      console.log("Real-time delivery status update on driver dashboard:", data);
+      loadData();
+    });
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      console.log("Real-time order status update on driver dashboard:", data);
+      loadData();
+    });
+
+    return () => {
+      unsubNotif();
+      unsubDelivery();
+      unsubOrder();
+    };
+  }, [onNotificationReceived, onDeliveryStatusUpdated, onOrderStatusUpdated]);
+
+  // Join active delivery room
+  useEffect(() => {
+    const activeReq = requests.find(
+      (r) =>
+        r.status === "Assigned" ||
+        r.status === "Accepted" ||
+        r.status === "PickedUp" ||
+        r.status === "InTransit"
+    );
+    if (activeReq?.orderId) {
+      joinDeliveryGroup(activeReq.orderId);
+      return () => {
+        leaveDeliveryGroup(activeReq.orderId);
+      };
+    }
+  }, [requests, joinDeliveryGroup, leaveDeliveryGroup]);
+
 
   // Availability Toggle
   const handleToggleAvailability = async () => {

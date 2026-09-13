@@ -12,10 +12,13 @@ import type { DeliveryRequestItem } from "../../types/delivery";
 import { DeliveryRequestCard } from "../../components/delivery/DeliveryRequestCard";
 import { AcceptDeliveryModal } from "../../components/delivery/AcceptDeliveryModal";
 import { RejectDeliveryModal } from "../../components/delivery/RejectDeliveryModal";
+import { useSignalR } from "../../context/SignalRContext";
 
 type TabFilter = "pending" | "active" | "completed" | "all";
 
 export function DeliveryRequestsPage() {
+  const { onNotificationReceived, onDeliveryStatusUpdated, onOrderStatusUpdated } =
+    useSignalR();
   const [requests, setRequests] = useState<DeliveryRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -52,6 +55,31 @@ export function DeliveryRequestsPage() {
   useEffect(() => {
     loadRequests();
   }, []);
+
+  // Real-time SignalR event listeners
+  useEffect(() => {
+    const unsubNotif = onNotificationReceived((notif) => {
+      console.log("Real-time notification on delivery requests page:", notif);
+      loadRequests();
+    });
+
+    const unsubDelivery = onDeliveryStatusUpdated((data) => {
+      console.log("Real-time delivery status update on requests page:", data);
+      loadRequests();
+    });
+
+    const unsubOrder = onOrderStatusUpdated((data) => {
+      console.log("Real-time order status update on requests page:", data);
+      loadRequests();
+    });
+
+    return () => {
+      unsubNotif();
+      unsubDelivery();
+      unsubOrder();
+    };
+  }, [onNotificationReceived, onDeliveryStatusUpdated, onOrderStatusUpdated]);
+
 
   const handleConfirmAccept = async () => {
     if (!acceptingRequest) return;
